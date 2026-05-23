@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.local
+
+# Runtime data
+project/data/*.db
+project/data/*.db-*
+project/uploads/*
+!project/uploads/.gitkeep
+project/logs/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated archives
+*.zip
