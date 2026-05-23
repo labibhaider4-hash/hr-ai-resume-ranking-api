@@ -2,28 +2,26 @@
 
 MCA final year project for an AI/NLP-based recruitment support API.
 
+This repository now contains the **Python version** of the project. It uses Python's standard library, SQLite, and a simple local NLP/ranking approach, so it can run without Node.js and without installing Flask/FastAPI.
+
 ## Project Overview
 
-This project is a Node.js and Express REST API that helps recruiters process resumes, extract structured candidate information, and rank candidates against job postings.
+The system helps recruiters:
 
-The system supports:
-
-- User registration and login
-- JWT/API-key authentication
-- Candidate management
-- Job posting management
-- Resume upload in PDF, DOCX, and TXT format
-- Resume text preprocessing
-- AI/NLP-based resume parsing
-- Candidate ranking against job requirements
-- API request logging
-- Project report and presentation files
+- Register and login
+- Add candidates
+- Create job postings
+- Upload resumes
+- Extract useful resume details
+- Match candidate skills with job requirements
+- Generate candidate ranking scores
+- Store API logs and results
 
 ## Folder Structure
 
 ```text
 Final_Submission_Package/
-├── project/          # Full backend source code
+├── project/          # Python API source code
 ├── report/           # Project report DOCX
 ├── presentation/     # Final presentation PPTX and previews
 └── README_SUBMISSION.txt
@@ -31,65 +29,48 @@ Final_Submission_Package/
 
 ## Tech Stack
 
-- Node.js
-- Express.js
+- Python
 - SQLite
-- better-sqlite3
-- Multer
-- JWT
-- bcryptjs
-- pdf-parse
-- Mammoth
-- Winston / Morgan
-- AI/NLP service integration
+- Python standard library HTTP server
+- Local NLP-style text preprocessing
+- Heuristic candidate ranking
 
 ## How To Run
 
-Open the `project` folder:
+Open the project folder:
 
 ```bash
 cd project
-npm install
+python app.py
 ```
 
-Create a `.env` file from `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-Set required values such as:
-
-```env
-PORT=3000
-JWT_SECRET=mysecret123
-ANTHROPIC_API_KEY=your_api_key_here
-DB_PATH=./data/hr_system.db
-UPLOAD_DIR=./uploads
-```
-
-Start the server:
-
-```bash
-npm start
-```
-
-Test in browser:
+The API runs at:
 
 ```text
-http://localhost:3000/health
+http://127.0.0.1:5000
 ```
 
-## Main API Modules
+Test health:
 
-- `/auth`
-- `/candidates`
-- `/jobs`
-- `/resumes`
-- `/ranking`
-- `/health`
-- `/stats`
+```text
+http://127.0.0.1:5000/health
+```
 
-## Notes
+## Main API Endpoints
 
-The project uses AI API integration for resume parsing and ranking. Custom model training and cloud deployment are listed as future enhancements.
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /candidates`
+- `GET /candidates`
+- `POST /jobs`
+- `GET /jobs`
+- `POST /resumes/upload`
+- `GET /resumes/<resume_id>`
+- `POST /ranking/job/<job_id>/rank-candidate/<candidate_id>`
+- `GET /stats`
+
+## Important Note
+
+This Python version works locally without an external AI API key. It extracts resume details from TXT resumes and ranks candidates using skill matching, experience matching, education score, and keyword score.
+
+PDF/DOCX upload is accepted, but full PDF/DOCX text extraction would require adding external parser libraries in the future.

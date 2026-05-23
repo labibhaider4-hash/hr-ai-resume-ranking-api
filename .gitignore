@@ -6,14 +6,9 @@ node_modules/
 .env.local
 
 # Runtime data
-project/data/*.db
-project/data/*.db-*
-project/uploads/*
-!project/uploads/.gitkeep
-project/logs/
-python_api/data/
-python_api/uploads/
-python_api/__pycache__/
+project/data/
+project/uploads/
+project/__pycache__/
 
 # OS/editor files
 .DS_Store
