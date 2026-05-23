@@ -405,58 +405,122 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Resume Screening Demo</title>
+  <title>Bulk Resume Screening System</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111827; }
-    .wrap { max-width: 720px; margin: 55px auto; background: white; padding: 34px; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.08); }
+    .wrap { max-width: 980px; margin: 35px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.08); }
     h1 { margin-top: 0; color: #4f36b8; }
     .box { padding: 14px; background: #eef2ff; border-left: 5px solid #4f36b8; margin: 18px 0; }
     label { display:block; margin-top: 16px; font-weight: bold; color:#475569; }
     input { width: 100%; padding: 11px; border:1px solid #cbd5e1; border-radius:6px; margin-top:6px; }
     button { background: #4f36b8; color: white; border: 0; padding: 12px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top:16px; }
+    button.secondary { background:#2563eb; }
     pre { background: #0f172a; color: #dbeafe; padding: 16px; border-radius: 8px; overflow: auto; white-space: pre-wrap; }
-    .score { font-size: 38px; font-weight: bold; color:#16a34a; }
-    .hidden { display:none; }
+    .skills { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 14px; margin-top: 10px; }
+    .skill { background:#f8fafc; border:1px solid #dbe3ef; border-radius:6px; padding:8px; font-size:14px; }
+    .skill input { width:auto; margin:0 6px 0 0; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    .result { margin-top: 20px; }
+    .hint { color:#64748b; font-size:14px; line-height:1.45; }
+    @media (max-width: 780px) { .skills, .row { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Resume Screening Demo</h1>
-    <p>Upload a resume. The API will screen it and show the result.</p>
-    <div class="box"><strong>Demo Job:</strong> Full Stack Developer requiring Node.js, React, SQL, and Docker.</div>
-    <label>Resume File</label>
-    <input id="resumeFile" type="file" accept=".txt,.docx,.pdf">
-    <button onclick="screenResume()">Upload Resume and Screen</button>
-    <div id="result" class="hidden">
-      <h2>Result</h2>
-      <div class="score" id="score"></div>
-      <p id="summary"></p>
-      <pre id="out"></pre>
+    <h1>Bulk Resume Screening System</h1>
+    <p>Select required skills, upload resumes, and download the screening result in Excel.</p>
+    <div class="box"><strong>Decision:</strong> 80+ Shortlist, 60-79 Review, below 60 Not Recommended. You can upload up to 200 resumes at once.</div>
+    <label>Job Title</label>
+    <input id="jobTitle" value="Full Stack Developer">
+    <div class="row">
+      <div>
+        <label>Minimum Experience in Years</label>
+        <input id="minExperience" type="number" value="2">
+      </div>
+      <div>
+        <label>Preferred Skills comma separated optional</label>
+        <input id="preferredSkills" value="docker">
+      </div>
+    </div>
+    <label>Required Skills Checklist</label>
+    <div id="skills" class="skills"></div>
+    <p class="hint">Tick the skills needed for the job. You may also type extra required skills below.</p>
+    <label>Extra Required Skills comma separated optional</label>
+    <input id="extraSkills" placeholder="example: pandas, excel, linux">
+    <label>Upload Resumes TXT, DOCX, or PDF</label>
+    <input id="resumeFiles" type="file" accept=".txt,.docx,.pdf" multiple>
+    <button onclick="screenBatch()">Screen Resumes and Download Excel</button>
+    <button class="secondary" onclick="selectCommon()">Select Common Developer Skills</button>
+    <div class="result">
+      <h2>Status</h2>
+      <pre id="out">Choose skills, upload resumes, then click the screening button.</pre>
     </div>
   </div>
   <script>
-    async function screenResume() {
-      if (!resumeFile.files.length) {
-        alert('Please choose a TXT resume file first.');
+    const allSkills = [
+      'python','javascript','node.js','react','sql','sqlite','postgresql','mongodb',
+      'express','html','css','docker','aws','java','c++','git','rest api','api',
+      'machine learning','nlp','flask','fastapi','django'
+    ];
+
+    function renderSkills() {
+      skills.innerHTML = allSkills.map(skill => `
+        <label class="skill"><input type="checkbox" value="${skill}"> ${skill}</label>
+      `).join('');
+    }
+
+    function selectedSkills() {
+      const checked = Array.from(document.querySelectorAll('#skills input:checked')).map(x => x.value);
+      const extra = extraSkills.value.split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+      return [...new Set([...checked, ...extra])];
+    }
+
+    function selectCommon() {
+      const common = new Set(['node.js','react','sql','javascript','html','css','docker','git']);
+      document.querySelectorAll('#skills input').forEach(box => box.checked = common.has(box.value));
+    }
+
+    async function screenBatch() {
+      const files = resumeFiles.files;
+      const req = selectedSkills();
+      if (!files.length) {
+        alert('Please choose at least one resume.');
+        return;
+      }
+      if (files.length > 200) {
+        alert('Maximum 200 resumes allowed.');
+        return;
+      }
+      if (!req.length) {
+        alert('Please select at least one required skill.');
         return;
       }
       const form = new FormData();
-      form.append('resume', resumeFile.files[0]);
-      form.append('required_skills', 'node.js,react,sql');
-      form.append('preferred_skills', 'docker');
-      form.append('min_experience_yrs', '2');
-      const res = await fetch('/screen-resume', { method: 'POST', body: form });
-      const data = await res.json();
-      result.classList.remove('hidden');
+      for (const file of files) form.append('resumes', file);
+      form.append('job_title', jobTitle.value);
+      form.append('required_skills', req.join(','));
+      form.append('preferred_skills', preferredSkills.value);
+      form.append('min_experience_yrs', minExperience.value);
+
+      out.textContent = 'Screening ' + files.length + ' resume(s)...';
+      const res = await fetch('/screen-batch', { method: 'POST', body: form });
       if (!res.ok) {
-        score.textContent = 'Error';
-        summary.textContent = data.error || 'Something went wrong.';
-      } else {
-        score.textContent = data.ranking.overall_score + '/100';
-        summary.textContent = data.ranking.recommendation;
+        const error = await res.json();
+        out.textContent = JSON.stringify(error, null, 2);
+        return;
       }
-      out.textContent = JSON.stringify(data, null, 2);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'resume_screening_results.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      out.textContent = 'Done. Excel file downloaded: resume_screening_results.xlsx';
     }
+
+    renderSkills();
+    selectCommon();
   </script>
 </body>
 </html>"""
@@ -714,6 +778,46 @@ def parse_resume_text(text):
     }, cleaned
 
 
+def score_resume(parsed, required, preferred, min_exp, job_title):
+    candidate_skills = set(parsed.get("skills", []))
+    matched_required = sorted(required & candidate_skills)
+    matched_preferred = sorted(preferred & candidate_skills)
+    skill_score = (len(matched_required) / max(len(required), 1)) * 70 + (len(matched_preferred) / max(len(preferred), 1)) * 30
+    exp = float(parsed.get("years_experience", 0))
+    experience_score = min((exp / max(min_exp, 1)) * 100, 100)
+    education_score = 75 if parsed.get("education_level") in {"bachelor", "master", "phd"} else 50
+    keyword_score = skill_score
+    overall = round(skill_score * 0.45 + experience_score * 0.30 + education_score * 0.15 + keyword_score * 0.10, 2)
+
+    if overall >= 80:
+        decision = "SHORTLIST"
+        decision_reason = "Candidate is a strong match for the entered requirements."
+    elif overall >= 60:
+        decision = "REVIEW"
+        decision_reason = "Candidate has a partial match and should be reviewed manually."
+    else:
+        decision = "NOT RECOMMENDED"
+        decision_reason = "Candidate does not match enough required skills or experience."
+
+    recommendation = (
+        f"Resume screened successfully for {job_title}. Candidate scored {overall}/100. "
+        f"Decision: {decision}. {decision_reason}"
+    )
+    return {
+        "overall_score": overall,
+        "skill_score": round(skill_score, 2),
+        "experience_score": round(experience_score, 2),
+        "education_score": education_score,
+        "keyword_score": round(keyword_score, 2),
+        "matched_required_skills": matched_required,
+        "missing_required_skills": sorted(required - candidate_skills),
+        "matched_preferred_skills": matched_preferred,
+        "decision": decision,
+        "decision_reason": decision_reason,
+        "recommendation": recommendation,
+    }
+
+
 def json_response(handler, status, payload):
     data = json.dumps(payload, default=str).encode()
     handler.send_response(status)
@@ -721,6 +825,15 @@ def json_response(handler, status, payload):
     handler.send_header("Content-Length", str(len(data)))
     handler.end_headers()
     handler.wfile.write(data)
+
+
+def xlsx_response(handler, filename, content):
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+    handler.send_header("Content-Length", str(len(content)))
+    handler.end_headers()
+    handler.wfile.write(content)
 
 
 def html_response(handler, status, html):
@@ -835,6 +948,8 @@ class App(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             if path == "/screen-resume":
                 self.handle_screen_resume()
+            elif path == "/screen-batch":
+                self.handle_screen_batch()
             elif path == "/auth/register":
                 body = self.read_json()
                 email = body.get("email")
@@ -1014,37 +1129,123 @@ class App(BaseHTTPRequestHandler):
             if s.strip()
         }
         min_exp = float(form.getvalue("min_experience_yrs", "2") or 2)
+        job_title = form.getvalue("job_title", "Selected Job")
 
-        candidate_skills = set(parsed.get("skills", []))
-        matched_required = sorted(required & candidate_skills)
-        matched_preferred = sorted(preferred & candidate_skills)
-        skill_score = (len(matched_required) / max(len(required), 1)) * 70 + (len(matched_preferred) / max(len(preferred), 1)) * 30
-        exp = float(parsed.get("years_experience", 0))
-        experience_score = min((exp / max(min_exp, 1)) * 100, 100)
-        education_score = 75 if parsed.get("education_level") in {"bachelor", "master", "phd"} else 50
-        keyword_score = skill_score
-        overall = round(skill_score * 0.45 + experience_score * 0.30 + education_score * 0.15 + keyword_score * 0.10, 2)
-
-        recommendation = (
-            f"Resume screened successfully. Candidate scored {overall}/100 for the demo "
-            "Full Stack Developer job."
-        )
+        ranking = score_resume(parsed, required, preferred, min_exp, job_title)
 
         self.send_json(200, {
             "message": "Resume screened successfully",
             "parsed_resume": parsed,
-            "ranking": {
-                "overall_score": overall,
-                "skill_score": round(skill_score, 2),
-                "experience_score": round(experience_score, 2),
-                "education_score": education_score,
-                "keyword_score": round(keyword_score, 2),
-                "matched_required_skills": matched_required,
-                "missing_required_skills": sorted(required - candidate_skills),
-                "matched_preferred_skills": matched_preferred,
-                "recommendation": recommendation,
-            }
+            "ranking": ranking
         })
+
+    def handle_screen_batch(self):
+        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
+        if ctype != "multipart/form-data":
+            self.send_json(400, {"error": "multipart/form-data required"})
+            return
+
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill
+        except ImportError:
+            self.send_json(500, {"error": "openpyxl is required to create XLSX output"})
+            return
+
+        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
+        files = form["resumes"] if "resumes" in form else []
+        if not isinstance(files, list):
+            files = [files]
+        files = [item for item in files if item is not None and item.filename]
+
+        if not files:
+            self.send_json(400, {"error": "Please upload at least one resume"})
+            return
+        if len(files) > 200:
+            self.send_json(400, {"error": "Maximum 200 resumes are allowed in one screening batch"})
+            return
+
+        required = {
+            s.strip().lower()
+            for s in form.getvalue("required_skills", "").split(",")
+            if s.strip()
+        }
+        preferred = {
+            s.strip().lower()
+            for s in form.getvalue("preferred_skills", "").split(",")
+            if s.strip()
+        }
+        if not required:
+            self.send_json(400, {"error": "Please select at least one required skill"})
+            return
+
+        try:
+            min_exp = float(form.getvalue("min_experience_yrs", "0") or 0)
+        except ValueError:
+            min_exp = 0
+        job_title = form.getvalue("job_title", "Selected Job")
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Screening Results"
+        headers = [
+            "No", "File Name", "Status", "Candidate Email", "Phone", "Extracted Skills",
+            "Years Experience", "Education", "Overall Score", "Skill Score", "Experience Score",
+            "Education Score", "Keyword Score", "Decision", "Matched Required Skills",
+            "Missing Required Skills", "Matched Preferred Skills", "Recommendation", "Error",
+        ]
+        ws.append(headers)
+        header_fill = PatternFill("solid", fgColor="4F36B8")
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = header_fill
+        ws.freeze_panes = "A2"
+
+        for index, file_item in enumerate(files, start=1):
+            filename = file_item.filename
+            ext = Path(filename).suffix.lower().lstrip(".")
+            if ext not in {"txt", "docx", "pdf"}:
+                ws.append([index, filename, "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Only TXT, DOCX, and PDF files are supported"])
+                continue
+
+            try:
+                raw_text = extract_text_from_file_bytes(filename, file_item.file.read())
+                if not raw_text.strip():
+                    raise ValueError("No readable text could be extracted from this file")
+                parsed, cleaned = parse_resume_text(raw_text)
+                ranking = score_resume(parsed, required, preferred, min_exp, job_title)
+                contact = parsed.get("contact", {})
+                ws.append([
+                    index,
+                    filename,
+                    "SCREENED",
+                    contact.get("email", ""),
+                    contact.get("phone", ""),
+                    ", ".join(parsed.get("skills", [])),
+                    parsed.get("years_experience", 0),
+                    parsed.get("education_level", ""),
+                    ranking["overall_score"],
+                    ranking["skill_score"],
+                    ranking["experience_score"],
+                    ranking["education_score"],
+                    ranking["keyword_score"],
+                    ranking["decision"],
+                    ", ".join(ranking["matched_required_skills"]),
+                    ", ".join(ranking["missing_required_skills"]),
+                    ", ".join(ranking["matched_preferred_skills"]),
+                    ranking["recommendation"],
+                    "",
+                ])
+            except Exception as exc:
+                ws.append([index, filename, "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", str(exc)])
+
+        widths = [8, 28, 14, 28, 18, 45, 18, 14, 15, 12, 18, 16, 14, 18, 35, 35, 35, 65, 40]
+        for col_index, width in enumerate(widths, start=1):
+            ws.column_dimensions[ws.cell(row=1, column=col_index).column_letter].width = width
+
+        output = BytesIO()
+        wb.save(output)
+        xlsx_response(self, "resume_screening_results.xlsx", output.getvalue())
 
     def handle_rank(self, job_id, candidate_id):
         with db() as conn:
