@@ -29,6 +29,8 @@ The homepage now shows the simple screening system:
 - Upload TXT, DOCX, or PDF resumes
 - Screen up to 200 resumes in one batch
 - Download the results as an Excel `.xlsx` file
+- Convert PDF data files into CSV
+- Upload CSV candidate/resume data directly and screen each row
 
 ## Test Health
 
@@ -49,6 +51,8 @@ GET http://127.0.0.1:5000/health
 - `POST /ranking/job/<job_id>/rank-candidate/<candidate_id>`
 - `POST /screen-resume` for one resume demo
 - `POST /screen-batch` for up to 200 resumes and Excel output
+- `POST /pdf-to-csv` for converting PDF data files to CSV
+- `POST /screen-csv` for screening resume/candidate data from a CSV file
 - `GET /stats`
 
 ## Notes
@@ -58,6 +62,8 @@ This Python version uses a local heuristic NLP/ranking system so it works withou
 DOCX extraction uses Python's built-in ZIP/XML support. PDF extraction uses `pypdf` if installed, with a basic fallback for simple PDFs.
 
 Excel export is generated with Python's built-in ZIP/XML libraries, so no extra Excel package is needed. It creates one row per uploaded resume with extracted skills, score, decision, matched skills, missing skills, recommendation, and any file error.
+
+CSV screening can read columns such as `resume_text`, `skills`, `experience`, `education`, `summary`, `profile`, `candidate`, or `name`. If those exact columns are not present, it combines all row values and screens that text.
 
 ## Decision System
 

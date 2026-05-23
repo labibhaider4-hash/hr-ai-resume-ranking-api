@@ -1,5 +1,6 @@
 import base64
 import cgi
+import csv
 import hashlib
 import hmac
 import json
@@ -11,7 +12,7 @@ import time
 import uuid
 import zipfile
 import xml.etree.ElementTree as ET
-from io import BytesIO
+from io import BytesIO, StringIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -422,6 +423,7 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
     .row { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
     .result { margin-top: 20px; }
     .hint { color:#64748b; font-size:14px; line-height:1.45; }
+    .section { border-top:1px solid #e2e8f0; margin-top:30px; padding-top:24px; }
     @media (max-width: 780px) { .skills, .row { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -454,6 +456,22 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
     <div class="result">
       <h2>Status</h2>
       <pre id="out">Choose skills, upload resumes, then click the screening button.</pre>
+    </div>
+    <div class="section">
+      <h2>PDF Data to CSV Converter</h2>
+      <p class="hint">Upload PDF data files. The API extracts readable rows and downloads a CSV file for Excel or database operations.</p>
+      <label>Upload PDF Data Files</label>
+      <input id="pdfDataFiles" type="file" accept=".pdf" multiple>
+      <button onclick="convertPdfToCsv()">Convert PDF to CSV</button>
+      <pre id="csvOut">Choose PDF data file(s), then click convert.</pre>
+    </div>
+    <div class="section">
+      <h2>CSV Resume Data Screening</h2>
+      <p class="hint">Upload a CSV that already contains resume/candidate data. The API screens each CSV row and downloads Excel results.</p>
+      <label>Upload CSV Data File</label>
+      <input id="csvDataFile" type="file" accept=".csv">
+      <button onclick="screenCsvData()">Screen CSV Data and Download Excel</button>
+      <pre id="csvScreenOut">Choose a CSV file, then click screen.</pre>
     </div>
   </div>
   <script>
@@ -517,6 +535,64 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
       a.click();
       URL.revokeObjectURL(url);
       out.textContent = 'Done. Excel file downloaded: resume_screening_results.xlsx';
+    }
+
+    async function convertPdfToCsv() {
+      const files = pdfDataFiles.files;
+      if (!files.length) {
+        alert('Please choose at least one PDF file.');
+        return;
+      }
+      const form = new FormData();
+      for (const file of files) form.append('pdf_files', file);
+      csvOut.textContent = 'Converting ' + files.length + ' PDF file(s) to CSV...';
+      const res = await fetch('/pdf-to-csv', { method: 'POST', body: form });
+      if (!res.ok) {
+        const error = await res.json();
+        csvOut.textContent = JSON.stringify(error, null, 2);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pdf_data_output.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      csvOut.textContent = 'Done. CSV file downloaded: pdf_data_output.csv';
+    }
+
+    async function screenCsvData() {
+      const req = selectedSkills();
+      if (!csvDataFile.files.length) {
+        alert('Please choose one CSV file.');
+        return;
+      }
+      if (!req.length) {
+        alert('Please select at least one required skill.');
+        return;
+      }
+      const form = new FormData();
+      form.append('csv_file', csvDataFile.files[0]);
+      form.append('job_title', jobTitle.value);
+      form.append('required_skills', req.join(','));
+      form.append('preferred_skills', preferredSkills.value);
+      form.append('min_experience_yrs', minExperience.value);
+      csvScreenOut.textContent = 'Screening CSV rows...';
+      const res = await fetch('/screen-csv', { method: 'POST', body: form });
+      if (!res.ok) {
+        const error = await res.json();
+        csvScreenOut.textContent = JSON.stringify(error, null, 2);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'csv_resume_screening_results.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      csvScreenOut.textContent = 'Done. Excel file downloaded: csv_resume_screening_results.xlsx';
     }
 
     renderSkills();
@@ -720,6 +796,71 @@ def extract_text_from_file_bytes(filename, data):
     raise ValueError("Only TXT, DOCX, and PDF files are supported")
 
 
+def pdf_text_to_rows(filename, text):
+    rows = []
+    for line_number, line in enumerate(clean_text(text).splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        parts = re.split(r"\s{2,}|\t+|[,|;]+", line)
+        parts = [part.strip() for part in parts if part.strip()]
+        if not parts:
+            continue
+        rows.append([filename, line_number] + parts)
+    if not rows and text.strip():
+        words = re.findall(r"\S+", text)
+        for index in range(0, len(words), 8):
+            rows.append([filename, (index // 8) + 1] + words[index:index + 8])
+    return rows
+
+
+def rows_to_csv(headers, rows):
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return output.getvalue()
+
+
+def parse_csv_text(text):
+    sample = text[:2048]
+    try:
+        dialect = csv.Sniffer().sniff(sample)
+    except csv.Error:
+        dialect = csv.excel
+    reader = csv.DictReader(StringIO(text), dialect=dialect)
+    if reader.fieldnames:
+        return list(reader), reader.fieldnames
+    simple_reader = csv.reader(StringIO(text), dialect=dialect)
+    rows = []
+    for index, row in enumerate(simple_reader, start=1):
+        rows.append({"row_number": str(index), "resume_text": " ".join(row)})
+    return rows, ["row_number", "resume_text"]
+
+
+def row_text_for_screening(row):
+    priority_columns = [
+        "resume_text", "text", "resume", "description", "summary", "profile",
+        "skills", "experience", "education", "candidate", "name",
+    ]
+    lower_map = {key.lower().strip(): value for key, value in row.items() if value is not None}
+    chosen = []
+    for column in priority_columns:
+        if lower_map.get(column):
+            chosen.append(str(lower_map[column]))
+    if chosen:
+        return " ".join(chosen)
+    return " ".join(str(value) for value in row.values() if value is not None)
+
+
+def row_candidate_name(row, index):
+    for key in ("name", "candidate_name", "candidate", "full_name"):
+        for real_key, value in row.items():
+            if real_key.lower().strip() == key and value:
+                return str(value)
+    return f"CSV Row {index}"
+
+
 def extract_contact(text):
     email = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
     phone = re.search(r"\+?\d[\d\s.-]{8,}\d", text)
@@ -917,6 +1058,16 @@ def xlsx_response(handler, filename, content):
     handler.wfile.write(content)
 
 
+def csv_response(handler, filename, text):
+    data = text.encode("utf-8-sig")
+    handler.send_response(200)
+    handler.send_header("Content-Type", "text/csv; charset=utf-8")
+    handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+    handler.send_header("Content-Length", str(len(data)))
+    handler.end_headers()
+    handler.wfile.write(data)
+
+
 def html_response(handler, status, html):
     data = html.encode("utf-8")
     handler.send_response(status)
@@ -1031,6 +1182,10 @@ class App(BaseHTTPRequestHandler):
                 self.handle_screen_resume()
             elif path == "/screen-batch":
                 self.handle_screen_batch()
+            elif path == "/pdf-to-csv":
+                self.handle_pdf_to_csv()
+            elif path == "/screen-csv":
+                self.handle_screen_csv()
             elif path == "/auth/register":
                 body = self.read_json()
                 email = body.get("email")
@@ -1307,6 +1462,137 @@ class App(BaseHTTPRequestHandler):
 
         widths = [8, 28, 14, 28, 18, 45, 18, 14, 15, 12, 18, 16, 14, 18, 35, 35, 35, 65, 40]
         xlsx_response(self, "resume_screening_results.xlsx", create_xlsx(headers, rows, widths))
+
+    def handle_pdf_to_csv(self):
+        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
+        if ctype != "multipart/form-data":
+            self.send_json(400, {"error": "multipart/form-data required"})
+            return
+
+        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
+        files = form["pdf_files"] if "pdf_files" in form else []
+        if not isinstance(files, list):
+            files = [files]
+        files = [item for item in files if item is not None and item.filename]
+        if not files:
+            self.send_json(400, {"error": "Please upload at least one PDF file"})
+            return
+
+        rows = []
+        max_columns = 0
+        for file_item in files:
+            filename = file_item.filename
+            ext = Path(filename).suffix.lower().lstrip(".")
+            if ext != "pdf":
+                rows.append([filename, "", "ERROR", "Only PDF files are supported"])
+                max_columns = max(max_columns, 2)
+                continue
+            try:
+                text = extract_text_from_pdf(file_item.file.read())
+                extracted_rows = pdf_text_to_rows(filename, text)
+                if not extracted_rows:
+                    rows.append([filename, "", "ERROR", "No readable text could be extracted"])
+                    max_columns = max(max_columns, 2)
+                    continue
+                rows.extend(extracted_rows)
+                max_columns = max(max_columns, max(len(row) - 2 for row in extracted_rows))
+            except Exception as exc:
+                rows.append([filename, "", "ERROR", str(exc)])
+                max_columns = max(max_columns, 2)
+
+        headers = ["source_file", "line_number"] + [f"column_{index}" for index in range(1, max_columns + 1)]
+        normalized = []
+        for row in rows:
+            normalized.append(row + [""] * (len(headers) - len(row)))
+        csv_response(self, "pdf_data_output.csv", rows_to_csv(headers, normalized))
+
+    def handle_screen_csv(self):
+        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
+        if ctype != "multipart/form-data":
+            self.send_json(400, {"error": "multipart/form-data required"})
+            return
+
+        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
+        file_item = form["csv_file"] if "csv_file" in form else None
+        if file_item is None or not file_item.filename:
+            self.send_json(400, {"error": "Please upload a CSV file"})
+            return
+        if Path(file_item.filename).suffix.lower() != ".csv":
+            self.send_json(400, {"error": "Only CSV files are supported here"})
+            return
+
+        required = {
+            s.strip().lower()
+            for s in form.getvalue("required_skills", "").split(",")
+            if s.strip()
+        }
+        preferred = {
+            s.strip().lower()
+            for s in form.getvalue("preferred_skills", "").split(",")
+            if s.strip()
+        }
+        if not required:
+            self.send_json(400, {"error": "Please select at least one required skill"})
+            return
+        try:
+            min_exp = float(form.getvalue("min_experience_yrs", "0") or 0)
+        except ValueError:
+            min_exp = 0
+        job_title = form.getvalue("job_title", "Selected Job")
+
+        text = file_item.file.read().decode("utf-8-sig", errors="ignore")
+        csv_rows, fieldnames = parse_csv_text(text)
+        if not csv_rows:
+            self.send_json(400, {"error": "CSV file has no data rows"})
+            return
+        if len(csv_rows) > 200:
+            self.send_json(400, {"error": "Maximum 200 CSV rows are allowed in one screening batch"})
+            return
+
+        headers = [
+            "No", "CSV File", "Candidate/Row", "Status", "Candidate Email", "Phone",
+            "Extracted Skills", "Years Experience", "Education", "Overall Score",
+            "Skill Score", "Experience Score", "Education Score", "Keyword Score",
+            "Decision", "Matched Required Skills", "Missing Required Skills",
+            "Matched Preferred Skills", "Recommendation", "Source Text", "Error",
+        ]
+        result_rows = []
+        for index, row in enumerate(csv_rows, start=1):
+            try:
+                source_text = row_text_for_screening(row)
+                if not source_text.strip():
+                    raise ValueError("No readable screening text found in this CSV row")
+                parsed, cleaned = parse_resume_text(source_text)
+                ranking = score_resume(parsed, required, preferred, min_exp, job_title)
+                contact = parsed.get("contact", {})
+                result_rows.append([
+                    index,
+                    file_item.filename,
+                    row_candidate_name(row, index),
+                    "SCREENED",
+                    contact.get("email", ""),
+                    contact.get("phone", ""),
+                    ", ".join(parsed.get("skills", [])),
+                    parsed.get("years_experience", 0),
+                    parsed.get("education_level", ""),
+                    ranking["overall_score"],
+                    ranking["skill_score"],
+                    ranking["experience_score"],
+                    ranking["education_score"],
+                    ranking["keyword_score"],
+                    ranking["decision"],
+                    ", ".join(ranking["matched_required_skills"]),
+                    ", ".join(ranking["missing_required_skills"]),
+                    ", ".join(ranking["matched_preferred_skills"]),
+                    ranking["recommendation"],
+                    source_text[:500],
+                    "",
+                ])
+            except Exception as exc:
+                result_rows.append([index, file_item.filename, row_candidate_name(row, index), "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", str(exc)])
+
+        widths = [8, 26, 26, 14, 28, 18, 45, 18, 14, 15, 12, 18, 16, 14, 18, 35, 35, 35, 65, 60, 40]
+        xlsx_response(self, "csv_resume_screening_results.xlsx", create_xlsx(headers, result_rows, widths))
 
     def handle_rank(self, job_id, candidate_id):
         with db() as conn:
