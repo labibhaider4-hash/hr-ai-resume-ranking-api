@@ -31,5 +31,5 @@ Run instructions:
 
 Notes:
 
-- The project source is now Python-only and does not require Node.js.
+- The project source is now Python-only.
 - The presentation contains 12 slides covering problem statement, objectives, architecture, database, API modules, NLP/AI workflow, testing, results, and future scope.
