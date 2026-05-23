@@ -1,0 +1,10 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+echo Stopping old servers on port 5000...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5000" ^| findstr "LISTENING"') do (
+  taskkill /F /PID %%a >nul 2>nul
+)
+echo Starting HR AI Resume Screening API...
+python app.py
+pause
