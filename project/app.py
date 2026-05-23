@@ -349,6 +349,116 @@ HOME_PAGE = r"""<!doctype html>
 </html>"""
 
 
+SIMPLE_HOME_PAGE = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HR AI API Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111827; }
+    .wrap { max-width: 880px; margin: 50px auto; background: white; padding: 32px; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.08); }
+    h1 { margin-top: 0; color: #4f36b8; }
+    .ok { padding: 14px; background: #ecfdf5; border-left: 5px solid #16a34a; margin: 18px 0; }
+    button { background: #4f36b8; color: white; border: 0; padding: 11px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    pre { background: #0f172a; color: #dbeafe; padding: 16px; border-radius: 8px; overflow: auto; }
+    code { background: #eef2ff; padding: 2px 5px; border-radius: 4px; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>AI-Powered Resume Parsing and Candidate Ranking API</h1>
+    <p>This is a simple Python API demo page.</p>
+    <div class="ok"><strong>Status:</strong> API server is running if health check shows healthy.</div>
+    <button onclick="checkApi()">Check API</button>
+    <h2>Demo URLs</h2>
+    <ul>
+      <li><code>/health</code> checks if the API is running.</li>
+      <li><code>/stats</code> shows database counts.</li>
+      <li><code>/auth/register</code> creates a recruiter user.</li>
+      <li><code>/candidates</code> creates/lists candidates.</li>
+      <li><code>/jobs</code> creates/lists jobs.</li>
+      <li><code>/resumes/upload</code> uploads a resume.</li>
+      <li><code>/ranking/job/&lt;job_id&gt;/rank-candidate/&lt;candidate_id&gt;</code> ranks a candidate.</li>
+    </ul>
+    <h2>API Response</h2>
+    <pre id="out">Click "Check API"</pre>
+  </div>
+  <script>
+    async function checkApi() {
+      const health = await fetch('/health').then(r => r.json());
+      const stats = await fetch('/stats').then(r => r.json());
+      document.getElementById('out').textContent = JSON.stringify({ health, stats }, null, 2);
+    }
+    checkApi();
+  </script>
+</body>
+</html>"""
+
+
+RESUME_SCREEN_PAGE = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume Screening Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111827; }
+    .wrap { max-width: 720px; margin: 55px auto; background: white; padding: 34px; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.08); }
+    h1 { margin-top: 0; color: #4f36b8; }
+    .box { padding: 14px; background: #eef2ff; border-left: 5px solid #4f36b8; margin: 18px 0; }
+    label { display:block; margin-top: 16px; font-weight: bold; color:#475569; }
+    input { width: 100%; padding: 11px; border:1px solid #cbd5e1; border-radius:6px; margin-top:6px; }
+    button { background: #4f36b8; color: white; border: 0; padding: 12px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top:16px; }
+    pre { background: #0f172a; color: #dbeafe; padding: 16px; border-radius: 8px; overflow: auto; white-space: pre-wrap; }
+    .score { font-size: 38px; font-weight: bold; color:#16a34a; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Resume Screening Demo</h1>
+    <p>Upload a TXT resume. The API will screen it and show the result.</p>
+    <div class="box"><strong>Demo Job:</strong> Full Stack Developer requiring Node.js, React, SQL, and Docker.</div>
+    <label>Resume File</label>
+    <input id="resumeFile" type="file" accept=".txt">
+    <button onclick="screenResume()">Upload Resume and Screen</button>
+    <div id="result" class="hidden">
+      <h2>Result</h2>
+      <div class="score" id="score"></div>
+      <p id="summary"></p>
+      <pre id="out"></pre>
+    </div>
+  </div>
+  <script>
+    async function screenResume() {
+      if (!resumeFile.files.length) {
+        alert('Please choose a TXT resume file first.');
+        return;
+      }
+      const form = new FormData();
+      form.append('resume', resumeFile.files[0]);
+      form.append('required_skills', 'node.js,react,sql');
+      form.append('preferred_skills', 'docker');
+      form.append('min_experience_yrs', '2');
+      const res = await fetch('/screen-resume', { method: 'POST', body: form });
+      const data = await res.json();
+      result.classList.remove('hidden');
+      if (!res.ok) {
+        score.textContent = 'Error';
+        summary.textContent = data.error || 'Something went wrong.';
+      } else {
+        score.textContent = data.ranking.overall_score + '/100';
+        summary.textContent = data.ranking.recommendation;
+      }
+      out.textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>"""
+
+
 SKILL_KEYWORDS = [
     "python", "javascript", "node.js", "node", "react", "sql", "sqlite",
     "postgresql", "mongodb", "express", "html", "css", "docker", "aws",
@@ -510,9 +620,12 @@ def clean_text(text):
 def extract_contact(text):
     email = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
     phone = re.search(r"\+?\d[\d\s.-]{8,}\d", text)
+    phone_value = phone.group(0) if phone else None
+    if phone_value and len(re.sub(r"\D", "", phone_value)) < 10:
+        phone_value = None
     return {
         "email": email.group(0) if email else None,
-        "phone": phone.group(0) if phone else None,
+        "phone": phone_value,
     }
 
 
@@ -629,7 +742,7 @@ class App(BaseHTTPRequestHandler):
         try:
             path = urlparse(self.path).path
             if path == "/":
-                self.send_html(200, HOME_PAGE)
+                self.send_html(200, RESUME_SCREEN_PAGE)
             elif path == "/health":
                 self.send_json(200, {"status": "healthy", "version": "python-1.0.0"})
             elif path == "/stats":
@@ -681,7 +794,9 @@ class App(BaseHTTPRequestHandler):
         status = 200
         try:
             path = urlparse(self.path).path
-            if path == "/auth/register":
+            if path == "/screen-resume":
+                self.handle_screen_resume()
+            elif path == "/auth/register":
                 body = self.read_json()
                 email = body.get("email")
                 password = body.get("password")
@@ -823,8 +938,71 @@ class App(BaseHTTPRequestHandler):
                 conn.execute(
                     "UPDATE candidates SET years_experience=?, education_level=? WHERE id=?",
                     (parsed.get("years_experience", 0), parsed.get("education_level"), candidate_id),
-                )
+            )
         self.send_json(202, {"message": "Resume uploaded and processed", "resume_id": resume_id, "status": status})
+
+    def handle_screen_resume(self):
+        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
+        if ctype != "multipart/form-data":
+            self.send_json(400, {"error": "multipart/form-data required"})
+            return
+
+        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
+        file_item = form["resume"] if "resume" in form else None
+        if file_item is None or not file_item.filename:
+            self.send_json(400, {"error": "Please upload a resume file"})
+            return
+
+        ext = Path(file_item.filename).suffix.lower().lstrip(".")
+        if ext != "txt":
+            self.send_json(400, {"error": "This simple demo supports TXT resumes. Use examples/sample_resume.txt"})
+            return
+
+        raw_text = file_item.file.read().decode("utf-8", errors="ignore")
+        parsed, cleaned = parse_resume_text(raw_text)
+
+        required = {
+            s.strip().lower()
+            for s in form.getvalue("required_skills", "node.js,react,sql").split(",")
+            if s.strip()
+        }
+        preferred = {
+            s.strip().lower()
+            for s in form.getvalue("preferred_skills", "docker").split(",")
+            if s.strip()
+        }
+        min_exp = float(form.getvalue("min_experience_yrs", "2") or 2)
+
+        candidate_skills = set(parsed.get("skills", []))
+        matched_required = sorted(required & candidate_skills)
+        matched_preferred = sorted(preferred & candidate_skills)
+        skill_score = (len(matched_required) / max(len(required), 1)) * 70 + (len(matched_preferred) / max(len(preferred), 1)) * 30
+        exp = float(parsed.get("years_experience", 0))
+        experience_score = min((exp / max(min_exp, 1)) * 100, 100)
+        education_score = 75 if parsed.get("education_level") in {"bachelor", "master", "phd"} else 50
+        keyword_score = skill_score
+        overall = round(skill_score * 0.45 + experience_score * 0.30 + education_score * 0.15 + keyword_score * 0.10, 2)
+
+        recommendation = (
+            f"Resume screened successfully. Candidate scored {overall}/100 for the demo "
+            "Full Stack Developer job."
+        )
+
+        self.send_json(200, {
+            "message": "Resume screened successfully",
+            "parsed_resume": parsed,
+            "ranking": {
+                "overall_score": overall,
+                "skill_score": round(skill_score, 2),
+                "experience_score": round(experience_score, 2),
+                "education_score": education_score,
+                "keyword_score": round(keyword_score, 2),
+                "matched_required_skills": matched_required,
+                "missing_required_skills": sorted(required - candidate_skills),
+                "matched_preferred_skills": matched_preferred,
+                "recommendation": recommendation,
+            }
+        })
 
     def handle_rank(self, job_id, candidate_id):
         with db() as conn:
