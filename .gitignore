@@ -11,6 +11,9 @@ project/data/*.db-*
 project/uploads/*
 !project/uploads/.gitkeep
 project/logs/
+python_api/data/
+python_api/uploads/
+python_api/__pycache__/
 
 # OS/editor files
 .DS_Store
