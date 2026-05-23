@@ -14,6 +14,23 @@ Server runs at:
 http://127.0.0.1:5000
 ```
 
+## Browser Homepage
+
+Open this URL after starting the server:
+
+```text
+http://127.0.0.1:5000/
+```
+
+The homepage gives a simple demo UI for:
+
+- Register / login
+- Create candidate
+- Create job
+- Upload resume
+- Rank candidate
+- View API response
+
 ## Test Health
 
 ```text

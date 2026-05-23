@@ -25,6 +25,330 @@ DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
+HOME_PAGE = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HR AI Resume Ranking API</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #dbe3ef;
+      --soft: #f6f8fc;
+      --purple: #5136c2;
+      --blue: #2563eb;
+      --green: #159947;
+      --amber: #d97706;
+      font-family: Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f6fb; color: var(--ink); }
+    header {
+      background: linear-gradient(120deg, #4f36b8, #2563eb);
+      color: white;
+      padding: 28px 38px;
+    }
+    header h1 { margin: 0 0 8px; font-size: 28px; }
+    header p { margin: 0; color: #e8edff; }
+    main { max-width: 1180px; margin: 24px auto; padding: 0 18px 40px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+    .card h2 { margin: 0 0 12px; font-size: 18px; }
+    label { display: block; font-size: 12px; font-weight: bold; color: var(--muted); margin: 12px 0 5px; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 11px;
+      font-size: 14px;
+      background: #fff;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      background: var(--purple);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button.secondary { background: var(--blue); }
+    button.good { background: var(--green); }
+    button.warn { background: var(--amber); }
+    .full { grid-column: 1 / -1; }
+    .status {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .pill {
+      background: white;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--purple);
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 62px;
+    }
+    .pill span { display: block; font-size: 12px; color: var(--muted); }
+    .pill strong { font-size: 15px; word-break: break-word; }
+    pre {
+      background: #0f172a;
+      color: #dbeafe;
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+      min-height: 190px;
+      white-space: pre-wrap;
+    }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    @media (max-width: 850px) {
+      .grid, .status { grid-template-columns: 1fr; }
+      .full { grid-column: auto; }
+      header { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI-Powered Resume Parsing and Candidate Ranking API</h1>
+    <p>Python demo homepage connected to the backend API</p>
+  </header>
+  <main>
+    <section class="status">
+      <div class="pill"><span>Server</span><strong id="serverState">Checking...</strong></div>
+      <div class="pill"><span>Token</span><strong id="tokenState">Not logged in</strong></div>
+      <div class="pill"><span>Candidate ID</span><strong id="candidateState">Not created</strong></div>
+      <div class="pill"><span>Job ID</span><strong id="jobState">Not created</strong></div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>1. Register / Login</h2>
+        <p class="hint">Create a recruiter account. The token is saved automatically for the next steps.</p>
+        <label>Email</label>
+        <input id="email" value="">
+        <label>Password</label>
+        <input id="password" value="password123" type="password">
+        <label>Name</label>
+        <input id="name" value="Labib Recruiter">
+        <button onclick="registerUser()">Register</button>
+        <button class="secondary" onclick="loginUser()">Login</button>
+      </div>
+
+      <div class="card">
+        <h2>2. Create Candidate</h2>
+        <label>First Name</label>
+        <input id="firstName" value="Ali">
+        <label>Last Name</label>
+        <input id="lastName" value="Khan">
+        <label>Candidate Email</label>
+        <input id="candidateEmail" value="">
+        <label>Location</label>
+        <input id="location" value="Mumbai">
+        <button onclick="createCandidate()">Create Candidate</button>
+      </div>
+
+      <div class="card">
+        <h2>3. Create Job</h2>
+        <label>Job Title</label>
+        <input id="jobTitle" value="Full Stack Developer">
+        <label>Required Skills comma separated</label>
+        <input id="requiredSkills" value="node.js, react, sql">
+        <label>Preferred Skills comma separated</label>
+        <input id="preferredSkills" value="docker">
+        <label>Minimum Experience</label>
+        <input id="minExp" value="2" type="number">
+        <button onclick="createJob()">Create Job</button>
+      </div>
+
+      <div class="card">
+        <h2>4. Upload Resume</h2>
+        <p class="hint">Use a TXT resume for this Python demo. A sample file is included in <b>examples/sample_resume.txt</b>.</p>
+        <label>Resume File</label>
+        <input id="resumeFile" type="file" accept=".txt,.pdf,.docx">
+        <button onclick="uploadResume()">Upload Resume</button>
+      </div>
+
+      <div class="card">
+        <h2>5. Rank Candidate</h2>
+        <p class="hint">This compares the latest parsed resume with the created job and returns a score.</p>
+        <button class="good" onclick="rankCandidate()">Rank Candidate</button>
+        <button class="warn" onclick="getStats()">Refresh Stats</button>
+      </div>
+
+      <div class="card">
+        <h2>Demo Order</h2>
+        <ol class="hint">
+          <li>Register or login.</li>
+          <li>Create candidate.</li>
+          <li>Create job.</li>
+          <li>Upload TXT resume.</li>
+          <li>Rank candidate.</li>
+        </ol>
+      </div>
+
+      <div class="card full">
+        <h2>API Response</h2>
+        <pre id="output">Ready.</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let token = localStorage.getItem("hr_token") || "";
+    let candidateId = localStorage.getItem("candidate_id") || "";
+    let jobId = localStorage.getItem("job_id") || "";
+    const unique = Date.now();
+    email.value = `labib${unique}@example.com`;
+    candidateEmail.value = `candidate${unique}@example.com`;
+
+    function show(data) {
+      output.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      updateState();
+    }
+
+    function updateState() {
+      tokenState.textContent = token ? "Available" : "Not logged in";
+      candidateState.textContent = candidateId || "Not created";
+      jobState.textContent = jobId || "Not created";
+    }
+
+    async function api(path, options = {}) {
+      const headers = options.headers || {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(path, { ...options, headers });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      return data;
+    }
+
+    async function checkHealth() {
+      try {
+        const data = await api("/health");
+        serverState.textContent = data.status;
+        show(data);
+      } catch (e) {
+        serverState.textContent = "Error";
+        show(e);
+      }
+    }
+
+    async function registerUser() {
+      try {
+        const data = await api("/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.value,
+            password: password.value,
+            name: name.value,
+            role: "recruiter"
+          })
+        });
+        token = data.token;
+        localStorage.setItem("hr_token", token);
+        show(data);
+      } catch (e) { show(e); }
+    }
+
+    async function loginUser() {
+      try {
+        const data = await api("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.value, password: password.value })
+        });
+        token = data.token;
+        localStorage.setItem("hr_token", token);
+        show(data);
+      } catch (e) { show(e); }
+    }
+
+    async function createCandidate() {
+      try {
+        const data = await api("/candidates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            first_name: firstName.value,
+            last_name: lastName.value,
+            email: candidateEmail.value,
+            phone: "9999999999",
+            location: location.value
+          })
+        });
+        candidateId = data.candidate.id;
+        localStorage.setItem("candidate_id", candidateId);
+        show(data);
+      } catch (e) { show(e); }
+    }
+
+    async function createJob() {
+      try {
+        const split = (v) => v.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+        const data = await api("/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: jobTitle.value,
+            department: "IT",
+            location: "Remote",
+            employment_type: "full_time",
+            description: "Build web applications",
+            requirements: requiredSkills.value,
+            required_skills: split(requiredSkills.value),
+            preferred_skills: split(preferredSkills.value),
+            min_experience_yrs: Number(minExp.value || 0)
+          })
+        });
+        jobId = data.job.id;
+        localStorage.setItem("job_id", jobId);
+        show(data);
+      } catch (e) { show(e); }
+    }
+
+    async function uploadResume() {
+      try {
+        if (!candidateId) throw { error: "Create candidate first" };
+        if (!resumeFile.files.length) throw { error: "Choose a resume file first" };
+        const form = new FormData();
+        form.append("candidate_id", candidateId);
+        form.append("resume", resumeFile.files[0]);
+        const data = await api("/resumes/upload", { method: "POST", body: form });
+        show(data);
+      } catch (e) { show(e); }
+    }
+
+    async function rankCandidate() {
+      try {
+        if (!candidateId || !jobId) throw { error: "Create candidate and job first" };
+        const data = await api(`/ranking/job/${jobId}/rank-candidate/${candidateId}`, { method: "POST" });
+        show(data);
+      } catch (e) { show(e); }
+    }
+
+    async function getStats() {
+      try { show(await api("/stats")); } catch (e) { show(e); }
+    }
+
+    updateState();
+    checkHealth();
+  </script>
+</body>
+</html>"""
+
+
 SKILL_KEYWORDS = [
     "python", "javascript", "node.js", "node", "react", "sql", "sqlite",
     "postgresql", "mongodb", "express", "html", "css", "docker", "aws",
@@ -247,6 +571,15 @@ def json_response(handler, status, payload):
     handler.wfile.write(data)
 
 
+def html_response(handler, status, html):
+    data = html.encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Content-Type", "text/html; charset=utf-8")
+    handler.send_header("Content-Length", str(len(data)))
+    handler.end_headers()
+    handler.wfile.write(data)
+
+
 def row_to_dict(row):
     if row is None:
         return None
@@ -259,6 +592,9 @@ class App(BaseHTTPRequestHandler):
 
     def send_json(self, status, payload):
         json_response(self, status, payload)
+
+    def send_html(self, status, html):
+        html_response(self, status, html)
 
     def read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
@@ -292,7 +628,9 @@ class App(BaseHTTPRequestHandler):
         status = 200
         try:
             path = urlparse(self.path).path
-            if path == "/health":
+            if path == "/":
+                self.send_html(200, HOME_PAGE)
+            elif path == "/health":
                 self.send_json(200, {"status": "healthy", "version": "python-1.0.0"})
             elif path == "/stats":
                 with db() as conn:
