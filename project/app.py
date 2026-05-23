@@ -9,6 +9,9 @@ import secrets
 import sqlite3
 import time
 import uuid
+import zipfile
+import xml.etree.ElementTree as ET
+from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -419,10 +422,10 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
 <body>
   <div class="wrap">
     <h1>Resume Screening Demo</h1>
-    <p>Upload a TXT resume. The API will screen it and show the result.</p>
+    <p>Upload a resume. The API will screen it and show the result.</p>
     <div class="box"><strong>Demo Job:</strong> Full Stack Developer requiring Node.js, React, SQL, and Docker.</div>
     <label>Resume File</label>
-    <input id="resumeFile" type="file" accept=".txt">
+    <input id="resumeFile" type="file" accept=".txt,.docx,.pdf">
     <button onclick="screenResume()">Upload Resume and Screen</button>
     <div id="result" class="hidden">
       <h2>Result</h2>
@@ -615,6 +618,42 @@ def clean_text(text):
     text = re.sub(r"[ ]{2,}", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def extract_text_from_docx(data):
+    text_parts = []
+    with zipfile.ZipFile(BytesIO(data)) as zf:
+        xml_data = zf.read("word/document.xml")
+    root = ET.fromstring(xml_data)
+    for node in root.iter():
+        if node.tag.endswith("}t") and node.text:
+            text_parts.append(node.text)
+        elif node.tag.endswith("}p"):
+            text_parts.append("\n")
+    return " ".join(text_parts)
+
+
+def extract_text_from_pdf(data):
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(BytesIO(data))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+    except Exception:
+        # Fallback for demo: extract readable text-like fragments from simple PDFs.
+        raw = data.decode("latin-1", errors="ignore")
+        chunks = re.findall(r"[A-Za-z0-9@.+#,/()\- ]{4,}", raw)
+        return "\n".join(chunks)
+
+
+def extract_text_from_file_bytes(filename, data):
+    ext = Path(filename).suffix.lower().lstrip(".")
+    if ext == "txt":
+        return data.decode("utf-8", errors="ignore")
+    if ext == "docx":
+        return extract_text_from_docx(data)
+    if ext == "pdf":
+        return extract_text_from_pdf(data)
+    raise ValueError("Only TXT, DOCX, and PDF files are supported")
 
 
 def extract_contact(text):
@@ -919,11 +958,11 @@ class App(BaseHTTPRequestHandler):
         file_path = UPLOAD_DIR / safe_name
         data = file_item.file.read()
         file_path.write_bytes(data)
-        raw_text = data.decode("utf-8", errors="ignore") if ext == "txt" else ""
+        raw_text = extract_text_from_file_bytes(file_item.filename, data)
         try:
             parsed, cleaned = parse_resume_text(raw_text)
             status = "completed" if raw_text.strip() else "failed"
-            error = None if raw_text.strip() else "Text extraction for PDF/DOCX requires external parser library."
+            error = None if raw_text.strip() else "No readable text could be extracted from this file."
         except Exception as exc:
             parsed, cleaned, status, error = {}, "", "failed", str(exc)
         with db() as conn:
@@ -954,11 +993,14 @@ class App(BaseHTTPRequestHandler):
             return
 
         ext = Path(file_item.filename).suffix.lower().lstrip(".")
-        if ext != "txt":
-            self.send_json(400, {"error": "This simple demo supports TXT resumes. Use examples/sample_resume.txt"})
+        if ext not in {"txt", "docx", "pdf"}:
+            self.send_json(400, {"error": "Only TXT, DOCX, and PDF resumes are supported"})
             return
 
-        raw_text = file_item.file.read().decode("utf-8", errors="ignore")
+        raw_text = extract_text_from_file_bytes(file_item.filename, file_item.file.read())
+        if not raw_text.strip():
+            self.send_json(400, {"error": "No readable text could be extracted from this file"})
+            return
         parsed, cleaned = parse_resume_text(raw_text)
 
         required = {

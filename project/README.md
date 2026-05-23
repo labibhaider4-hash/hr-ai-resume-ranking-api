@@ -24,7 +24,7 @@ http://127.0.0.1:5000/
 
 The homepage now does one simple thing:
 
-- Upload a TXT resume
+- Upload a TXT, DOCX, or PDF resume
 - Screen the resume
 - Show extracted details and ranking score
 
@@ -49,6 +49,6 @@ GET http://127.0.0.1:5000/health
 
 ## Notes
 
-This Python version uses a local heuristic NLP/ranking system so it works without an external AI key. It extracts email, phone, skills, estimated experience, and education keywords from uploaded TXT resumes.
+This Python version uses a local heuristic NLP/ranking system so it works without an external AI key. It extracts email, phone, skills, estimated experience, and education keywords from uploaded TXT, DOCX, and PDF resumes.
 
-PDF/DOCX files can be uploaded, but this standard-library version only extracts text directly from TXT files. For PDF/DOCX parsing, external libraries such as `pdfplumber`, `PyPDF2`, or `python-docx` can be added later.
+DOCX extraction uses Python's built-in ZIP/XML support. PDF extraction uses `pypdf` if installed, with a basic fallback for simple PDFs.
