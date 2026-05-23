@@ -57,7 +57,7 @@ This Python version uses a local heuristic NLP/ranking system so it works withou
 
 DOCX extraction uses Python's built-in ZIP/XML support. PDF extraction uses `pypdf` if installed, with a basic fallback for simple PDFs.
 
-Excel export uses `openpyxl`. It creates one row per uploaded resume with extracted skills, score, decision, matched skills, missing skills, recommendation, and any file error.
+Excel export is generated with Python's built-in ZIP/XML libraries, so no extra Excel package is needed. It creates one row per uploaded resume with extracted skills, score, decision, matched skills, missing skills, recommendation, and any file error.
 
 ## Decision System
 

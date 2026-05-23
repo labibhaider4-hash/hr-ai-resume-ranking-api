@@ -827,6 +827,87 @@ def json_response(handler, status, payload):
     handler.wfile.write(data)
 
 
+def xml_escape(value):
+    text = "" if value is None else str(value)
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def excel_column_name(index):
+    name = ""
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        name = chr(65 + remainder) + name
+    return name
+
+
+def create_xlsx(headers, rows, widths):
+    worksheet_rows = [headers] + rows
+    sheet_xml = [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        "<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>",
+        "<cols>",
+    ]
+    for idx, width in enumerate(widths, start=1):
+        sheet_xml.append(f'<col min="{idx}" max="{idx}" width="{width}" customWidth="1"/>')
+    sheet_xml.append("</cols><sheetData>")
+
+    for row_index, row in enumerate(worksheet_rows, start=1):
+        sheet_xml.append(f'<row r="{row_index}">')
+        for col_index, value in enumerate(row, start=1):
+            cell_ref = f"{excel_column_name(col_index)}{row_index}"
+            style = ' s="1"' if row_index == 1 else ""
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                sheet_xml.append(f'<c r="{cell_ref}"{style}><v>{value}</v></c>')
+            else:
+                sheet_xml.append(f'<c r="{cell_ref}" t="inlineStr"{style}><is><t>{xml_escape(value)}</t></is></c>')
+        sheet_xml.append("</row>")
+    sheet_xml.append("</sheetData></worksheet>")
+
+    workbook_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Screening Results" sheetId="1" r:id="rId1"/></sheets>
+</workbook>"""
+    workbook_rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>"""
+    rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>"""
+    content_types_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>"""
+    styles_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF4F36B8"/><bgColor indexed="64"/></patternFill></fill></fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>"""
+
+    output = BytesIO()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types_xml)
+        archive.writestr("_rels/.rels", rels_xml)
+        archive.writestr("xl/workbook.xml", workbook_xml)
+        archive.writestr("xl/_rels/workbook.xml.rels", workbook_rels_xml)
+        archive.writestr("xl/worksheets/sheet1.xml", "".join(sheet_xml))
+        archive.writestr("xl/styles.xml", styles_xml)
+    return output.getvalue()
+
+
 def xlsx_response(handler, filename, content):
     handler.send_response(200)
     handler.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -1145,13 +1226,6 @@ class App(BaseHTTPRequestHandler):
             self.send_json(400, {"error": "multipart/form-data required"})
             return
 
-        try:
-            from openpyxl import Workbook
-            from openpyxl.styles import Font, PatternFill
-        except ImportError:
-            self.send_json(500, {"error": "openpyxl is required to create XLSX output"})
-            return
-
         form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
         files = form["resumes"] if "resumes" in form else []
         if not isinstance(files, list):
@@ -1185,27 +1259,19 @@ class App(BaseHTTPRequestHandler):
             min_exp = 0
         job_title = form.getvalue("job_title", "Selected Job")
 
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Screening Results"
         headers = [
             "No", "File Name", "Status", "Candidate Email", "Phone", "Extracted Skills",
             "Years Experience", "Education", "Overall Score", "Skill Score", "Experience Score",
             "Education Score", "Keyword Score", "Decision", "Matched Required Skills",
             "Missing Required Skills", "Matched Preferred Skills", "Recommendation", "Error",
         ]
-        ws.append(headers)
-        header_fill = PatternFill("solid", fgColor="4F36B8")
-        for cell in ws[1]:
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = header_fill
-        ws.freeze_panes = "A2"
+        rows = []
 
         for index, file_item in enumerate(files, start=1):
             filename = file_item.filename
             ext = Path(filename).suffix.lower().lstrip(".")
             if ext not in {"txt", "docx", "pdf"}:
-                ws.append([index, filename, "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Only TXT, DOCX, and PDF files are supported"])
+                rows.append([index, filename, "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Only TXT, DOCX, and PDF files are supported"])
                 continue
 
             try:
@@ -1215,7 +1281,7 @@ class App(BaseHTTPRequestHandler):
                 parsed, cleaned = parse_resume_text(raw_text)
                 ranking = score_resume(parsed, required, preferred, min_exp, job_title)
                 contact = parsed.get("contact", {})
-                ws.append([
+                rows.append([
                     index,
                     filename,
                     "SCREENED",
@@ -1237,15 +1303,10 @@ class App(BaseHTTPRequestHandler):
                     "",
                 ])
             except Exception as exc:
-                ws.append([index, filename, "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", str(exc)])
+                rows.append([index, filename, "ERROR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", str(exc)])
 
         widths = [8, 28, 14, 28, 18, 45, 18, 14, 15, 12, 18, 16, 14, 18, 35, 35, 35, 65, 40]
-        for col_index, width in enumerate(widths, start=1):
-            ws.column_dimensions[ws.cell(row=1, column=col_index).column_letter].width = width
-
-        output = BytesIO()
-        wb.save(output)
-        xlsx_response(self, "resume_screening_results.xlsx", output.getvalue())
+        xlsx_response(self, "resume_screening_results.xlsx", create_xlsx(headers, rows, widths))
 
     def handle_rank(self, job_id, candidate_id):
         with db() as conn:
