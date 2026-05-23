@@ -1,0 +1,16 @@
+Ali Khan
+ali@example.com
+Mumbai, India
+
+Summary
+Full Stack Developer with 3 years of experience building web applications.
+
+Skills
+Node.js, React, SQL, Express.js, JavaScript, HTML, CSS, Docker
+
+Experience
+Software Developer, DemoTech, 2021 - 2024
+Built REST APIs, frontend dashboards, and database-backed web applications.
+
+Education
+Bachelor of Computer Applications, 2021

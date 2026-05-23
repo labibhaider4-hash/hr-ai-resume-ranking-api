@@ -59,7 +59,7 @@ app.get('/health', (req, res) => {
 app.get('/stats', (req, res) => {
   res.json({
     candidates:   db.prepare('SELECT COUNT(*) as n FROM candidates').get().n,
-    jobs:         db.prepare('SELECT COUNT(*) as n FROM job_postings WHERE status="open"').get().n,
+    jobs:         db.prepare("SELECT COUNT(*) as n FROM job_postings WHERE status='open'").get().n,
     resumes:      db.prepare('SELECT COUNT(*) as n FROM resumes').get().n,
     parsed:       db.prepare("SELECT COUNT(*) as n FROM resumes WHERE parse_status='completed'").get().n,
     rankings:     db.prepare('SELECT COUNT(*) as n FROM ranking_results').get().n,
