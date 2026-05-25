@@ -68,7 +68,7 @@ Response:
 
 ### POST `/screen-batch`
 
-Screens up to 200 resume files and returns an Excel file.
+Screens up to 1,000,000 resume files and returns an Excel file.
 
 Request type:
 

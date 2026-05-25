@@ -29,7 +29,7 @@ MAX_REQUEST_BYTES = int(os.environ.get("MAX_REQUEST_BYTES", str(250 * 1024 * 102
 
 DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR.mkdir(exist_ok=True)
-MAX_RESUME_FILES = 200
+MAX_RESUME_FILES = 1_000_000
 MAX_CSV_SCREENING_ROWS = 1_000_000
 
 
@@ -697,7 +697,7 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
         <section class="main">
           <div class="section-title">
             <h2>Resume Screening</h2>
-            <span class="pill">Up to 200 files</span>
+            <span class="pill">Up to 1,000,000 files</span>
           </div>
           <div class="row">
             <div>
@@ -795,8 +795,8 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
         alert('Please choose at least one resume.');
         return;
       }
-      if (files.length > 200) {
-        alert('Maximum 200 resumes allowed.');
+      if (files.length > 1000000) {
+        alert('Maximum 1,000,000 resumes allowed.');
         return;
       }
       if (!req.length) {
@@ -1381,7 +1381,7 @@ def api_docs():
             {"method": "GET", "path": "/health", "description": "Service health and runtime metadata"},
             {"method": "GET", "path": "/api/docs", "description": "Machine-readable route catalog"},
             {"method": "POST", "path": "/screen-resume", "description": "Screen one TXT, DOCX, or PDF resume"},
-            {"method": "POST", "path": "/screen-batch", "description": "Screen up to 200 resume files and download XLSX"},
+            {"method": "POST", "path": "/screen-batch", "description": "Screen up to 1,000,000 resume files and download XLSX"},
             {"method": "POST", "path": "/pdf-to-csv", "description": "Convert readable PDF data files into CSV"},
             {"method": "POST", "path": "/screen-csv", "description": "Screen CSV candidate rows and download XLSX"},
         ],

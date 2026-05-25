@@ -117,7 +117,7 @@ The user selects required skills, uploads resumes, and downloads an Excel result
 
 ### 8.3 Bulk Screening
 
-The system supports up to `200` resume files in one batch upload.
+The system supports up to `1,000,000` resume files in one batch upload.
 
 For each resume, the output includes:
 

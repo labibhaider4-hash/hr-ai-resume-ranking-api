@@ -33,7 +33,7 @@ The homepage now shows the simple screening system:
 - Tick/select required skills from the checklist
 - Add extra required skills if needed
 - Upload TXT, DOCX, or PDF resumes
-- Screen up to 200 resumes in one batch
+- Screen up to 1,000,000 resumes in one batch
 - Download the results as an Excel `.xlsx` file
 - Convert PDF data files into CSV
 - Upload CSV candidate/resume data directly and screen up to 1,000,000 rows
@@ -56,7 +56,7 @@ GET http://127.0.0.1:5000/health
 - `GET /resumes/<resume_id>`
 - `POST /ranking/job/<job_id>/rank-candidate/<candidate_id>`
 - `POST /screen-resume` for one resume demo
-- `POST /screen-batch` for up to 200 resumes and Excel output
+- `POST /screen-batch` for up to 1,000,000 resumes and Excel output
 - `POST /pdf-to-csv` for converting PDF data files to CSV
 - `POST /screen-csv` for screening resume/candidate data from a CSV file
 - `GET /api/docs` for machine-readable API documentation
