@@ -405,498 +405,1109 @@ SIMPLE_HOME_PAGE = r"""<!doctype html>
 </html>"""
 
 
-RESUME_SCREEN_PAGE = r"""<!doctype html>
+RESUME_SCREEN_PAGE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bulk Resume Screening System</title>
-  <style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR TalentScan — HR Resume Intelligence</title>  <style>
     :root {
-      --ink: #172033;
-      --muted: #667085;
-      --line: #d9e0ea;
-      --soft: #f5f7fb;
-      --panel: #ffffff;
-      --primary: #5b3fd6;
-      --primary-dark: #4023a2;
-      --blue: #2563eb;
-      --green: #0f9f6e;
-      --orange: #f59e0b;
-      --danger: #dc2626;
+      --navy:        #0d1b38;
+      --navy-mid:    #1a2f5a;
+      --navy-light:  #243f78;
+      --teal:        #0d9488;
+      --teal-hover:  #0f8075;
+      --teal-pale:   #f0fdfa;
+      --teal-border: #99e6da;
+      --bg:          #f0f4f9;
+      --surface:     #ffffff;
+      --border:      #dde3ed;
+      --border-str:  #c6cfdf;
+      --text:        #0d1526;
+      --text-mid:    #2e3f5c;
+      --text-muted:  #5f7090;
+      --text-faint:  #9aacca;
+      --success:     #059669;
+      --success-bg:  #ecfdf5;
+      --warning-bg:  #fffbeb;
+      --warning:     #b45309;
+      --info-bg:     #eff6ff;
+      --info:        #1d4ed8;
+      --info-border: #bfdbfe;
+      --r-sm: 6px;
+      --r:    10px;
+      --r-lg: 14px;
     }
-    * { box-sizing: border-box; }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: Arial, Helvetica, sans-serif;
-      margin: 0;
-      background: #eef2f7;
-      color: var(--ink);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
     }
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 28px 22px 44px;
-    }
-    .topbar {
+
+    /* ═══════════════ HEADER ═══════════════ */
+    .app-header {
+      background: var(--navy);
+      color: #fff;
+      height: 62px;
+      padding: 0 2rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 18px;
+      position: sticky;
+      top: 0;
+      z-index: 1,000,000;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.25);
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-    }
-    .mark {
-      width: 42px;
-      height: 42px;
+
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand-mark {
+      width: 36px; height: 36px;
+      background: var(--teal);
       border-radius: 8px;
-      background: var(--primary);
-      color: white;
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      font-size: 21px;
-      flex: 0 0 auto;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff;
+      letter-spacing: -1px;
+      flex-shrink: 0;
     }
-    h1 { margin: 0; font-size: 28px; line-height: 1.15; }
-    .subtitle { margin: 5px 0 0; color: var(--muted); font-size: 14px; }
-    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-    .badge {
-      border: 1px solid var(--line);
-      background: white;
-      color: #344054;
-      border-radius: 999px;
-      padding: 8px 11px;
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .surface {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: 0 18px 45px rgba(23, 32, 51, .08);
-      overflow: hidden;
-    }
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      border-bottom: 1px solid var(--line);
-      background: #fbfcfe;
-    }
-    .metric {
-      padding: 18px 22px;
-      border-right: 1px solid var(--line);
-    }
-    .metric:last-child { border-right: 0; }
-    .metric strong { display: block; font-size: 22px; margin-bottom: 4px; }
-    .metric span { color: var(--muted); font-size: 13px; }
-    .content {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
-      gap: 0;
-    }
-    .main {
-      padding: 24px;
-      border-right: 1px solid var(--line);
-    }
-    .side {
-      padding: 24px;
-      background: #fbfcfe;
-    }
-    .section-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin: 0 0 16px;
-    }
-    h2 { margin: 0; font-size: 19px; line-height: 1.25; }
+
+    .brand-text { display: flex; flex-direction: column; gap: 1px; }
+    .brand-name { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; color: #fff; line-height: 1.2; }
+    .brand-sub  { font-size: 10.5px; color: rgba(255,255,255,0.38); letter-spacing: 0.7px; text-transform: uppercase; }
+
+    .header-pills { display: flex; align-items: center; gap: 8px; }
     .pill {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: #eef2ff;
-      color: var(--primary-dark);
-      font-weight: 800;
-      font-size: 12px;
-      white-space: nowrap;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 4px 11px;
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.1px;
     }
-    label {
-      display: block;
-      margin: 14px 0 7px;
-      font-weight: 800;
-      color: #344054;
-      font-size: 14px;
-    }
-    input {
-      width: 100%;
-      min-height: 44px;
-      padding: 10px 12px;
-      border: 1px solid #c8d2df;
-      border-radius: 6px;
-      background: white;
-      color: var(--ink);
-      font-size: 14px;
-      outline: none;
-    }
-    input:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(91, 63, 214, .14);
-    }
-    input[type="file"] {
-      padding: 9px;
-      background: #f8fafc;
-    }
-    button {
-      min-height: 44px;
-      border: 0;
-      border-radius: 6px;
-      padding: 11px 16px;
-      font-weight: 800;
-      cursor: pointer;
-      font-size: 14px;
-      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-    }
-    button:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(23, 32, 51, .12); }
-    .primary { background: var(--primary); color: white; }
-    .secondary { background: #e8eefc; color: #1d4ed8; }
-    .blue { background: var(--blue); color: white; }
-    .green { background: var(--green); color: white; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
-    .row {
+    .pill.accent { background: rgba(13,148,136,0.25); border-color: rgba(13,148,136,0.5); color: #5eead4; }
+
+    /* ═══════════════ LAYOUT ═══════════════ */
+    .app-body {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.75rem 1.5rem;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      grid-template-columns: 268px 1fr;
+      gap: 1.5rem;
+      align-items: start;
     }
-    .skills {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 10px;
+
+    /* ═══════════════ SIDEBAR ═══════════════ */
+    .sidebar { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 78px; }
+
+    .sidebar-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
-    .skill {
+
+    .sidebar-heading {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-faint);
+      margin-bottom: 1rem;
+    }
+
+    .stat-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 0;
-      min-height: 42px;
-      padding: 9px 10px;
-      background: #f8fafc;
-      border: 1px solid #d7e0eb;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 800;
-      color: #344054;
-      cursor: pointer;
-    }
-    .skill input { width: auto; min-height: auto; margin: 0; accent-color: var(--primary); }
-    .upload {
-      margin-top: 16px;
-      padding: 16px;
-      border: 1px dashed #aebbd0;
-      border-radius: 8px;
-      background: #f8fafc;
-    }
-    .status-block { margin-top: 22px; }
-    .status-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       gap: 12px;
-      margin-bottom: 10px;
+      padding: 0.75rem 0.875rem;
+      background: var(--bg);
+      border-radius: var(--r);
+      margin-bottom: 8px;
+      border-left: 3px solid var(--teal);
     }
-    pre {
-      min-height: 88px;
-      margin: 0;
-      background: #161b2b;
-      color: #eef4ff;
-      padding: 15px;
-      border-radius: 6px;
-      overflow: auto;
-      white-space: pre-wrap;
+    .stat-item.blue { border-left-color: #3b82f6; }
+    .stat-item.purple { border-left-color: #7c3aed; }
+    .stat-item:last-child { margin-bottom: 0; }
+
+    .stat-icon { font-size: 20px; flex-shrink: 0; }
+    .stat-body { flex: 1; min-width: 0; }
+    .stat-val  { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; line-height: 1.2; }
+    .stat-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .feature-list { display: flex; flex-direction: column; gap: 2px; }
+    .feat-row {
+      display: flex; align-items: flex-start; gap: 9px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
       font-size: 13px;
+      color: var(--text-mid);
+      line-height: 1.4;
+    }
+    .feat-row:last-child { border-bottom: none; }
+    .feat-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+    .notice {
+      background: var(--info-bg);
+      border: 1px solid var(--info-border);
+      border-radius: var(--r);
+      padding: 0.875rem 1rem;
+      font-size: 12px;
+      color: var(--info);
       line-height: 1.55;
     }
-    .tool {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: white;
-      margin-bottom: 16px;
+    .notice strong { font-weight: 600; }
+
+    /* ═══════════════ MAIN PANEL ═══════════════ */
+    .main-panel { display: flex; flex-direction: column; }
+
+    .tab-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
+      padding: 7px;
+      display: flex;
+      gap: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
-    .tool:last-child { margin-bottom: 0; }
-    .tool h3 { margin: 0 0 6px; font-size: 17px; }
-    .hint { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0 0 12px; }
-    .decision {
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      border-radius: var(--r);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.16s, color 0.16s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { background: var(--bg); color: var(--text); }
+    .tab-btn.active { background: var(--navy); color: #fff; }
+    .tab-icon { font-size: 15px; }
+
+    .panel-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--r-lg) var(--r-lg);
+      padding: 2rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ═══════════════ SECTION HEADER ═══════════════ */
+    .sec-hdr {
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .sec-title { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; margin-bottom: 3px; }
+    .sec-desc  { font-size: 13px; color: var(--text-muted); line-height: 1.5; max-width: 540px; }
+    .sec-badge {
+      flex-shrink: 0;
+      background: var(--teal-pale);
+      border: 1px solid var(--teal-border);
+      color: var(--teal-hover);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* ═══════════════ FORM ELEMENTS ═══════════════ */
+    .form-grid {
       display: grid;
-      gap: 8px;
-      margin-top: 16px;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
     }
-    .decision div {
+    .fg { display: flex; flex-direction: column; gap: 6px; }
+    .fg.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-mid);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .lbl-hint {
+      font-weight: 400;
+      color: var(--text-faint);
+      font-size: 12px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border-str);
+      border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.13);
+    }
+    input::placeholder { color: var(--text-faint); }
+
+    /* ═══════════════ SKILLS ═══════════════ */
+    .skills-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1rem 1.125rem;
+      margin-bottom: 1.25rem;
+    }
+    .skills-topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 0.875rem;
+    }
+    .skills-lbl  { font-size: 13px; font-weight: 500; color: var(--text-mid); }
+    .skills-count {
+      background: var(--navy);
+      color: #fff;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 11.5px;
+      font-weight: 500;
+      min-width: 28px;
+      text-align: center;
+    }
+    .skills-count.zero { background: var(--border-str); color: var(--text-muted); }
+
+    #skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      min-height: 42px;
+    }
+
+    .skill-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid var(--border-str);
+      background: #fff;
+      color: var(--text-mid);
+      transition: border-color 0.14s, background 0.14s, color 0.14s;
+      user-select: none;
+    }
+    .skill-chip:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-pale); }
+    .skill-chip.selected { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .chip-check { font-size: 10px; opacity: 0; }
+    .skill-chip.selected .chip-check { opacity: 1; }
+
+    .quickadd-row {
+      margin-top: 0.875rem;
+      padding-top: 0.875rem;
+      border-top: 1px solid var(--border);
+    }
+    .quickadd-lbl { font-size: 11.5px; color: var(--text-muted); margin-bottom: 7px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .quickadd-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .qa-btn {
+      padding: 4px 11px;
+      border: 1px solid var(--border-str);
+      border-radius: var(--r-sm);
+      background: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text-mid);
+      cursor: pointer;
+      transition: all 0.14s;
+    }
+    .qa-btn:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-pale); }
+
+    /* ═══════════════ UPLOAD ZONE ═══════════════ */
+    .upload-zone {
+      border: 2px dashed var(--border-str);
+      border-radius: var(--r);
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      background: var(--bg);
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.16s, background 0.16s;
+    }
+    .upload-zone:hover,
+    .upload-zone.dragover { border-color: var(--teal); background: var(--teal-pale); }
+    .upload-zone.has-files { border-color: var(--success); background: var(--success-bg); border-style: solid; }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      border: none; padding: 0;
+    }
+
+    .uz-icon  { font-size: 30px; margin-bottom: 8px; display: block; }
+    .uz-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+    .uz-hint  { font-size: 12px; color: var(--text-muted); }
+
+    .fmt-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .fmt-tag {
+      background: #fff;
+      border: 1px solid var(--border-str);
+      border-radius: 4px;
+      padding: 2px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-mid);
+      letter-spacing: 0.4px;
+    }
+
+    /* ═══════════════ BUTTONS ═══════════════ */
+    .action-row {
+      display: flex;
+      align-items: center;
       gap: 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 10px 12px;
-      background: white;
-      font-size: 13px;
-      color: var(--muted);
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
     }
-    .decision strong { color: var(--ink); }
-    @media (max-width: 980px) {
-      .topbar, .content { display: block; }
-      .badge-row { justify-content: flex-start; margin-top: 14px; }
-      .main { border-right: 0; border-bottom: 1px solid var(--line); }
-      .summary { grid-template-columns: 1fr; }
-      .metric { border-right: 0; border-bottom: 1px solid var(--line); }
-      .metric:last-child { border-bottom: 0; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      transition: background 0.16s, transform 0.1s;
+      letter-spacing: -0.1px;
     }
-    @media (max-width: 760px) {
-      .shell { padding: 18px 12px 28px; }
-      h1 { font-size: 23px; }
-      .main, .side { padding: 18px; }
-      .skills, .row { grid-template-columns: 1fr; }
-      .actions button { width: 100%; }
+    .btn-primary:hover { background: var(--navy-light); }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-teal {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px;
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      transition: background 0.16s, transform 0.1s;
+    }
+    .btn-teal:hover { background: var(--teal-hover); }
+    .btn-teal:active { transform: scale(0.98); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px;
+      background: #fff;
+      color: var(--text-mid);
+      border: 1px solid var(--border-str);
+      border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.14s;
+    }
+    .btn-ghost:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-pale); }
+
+    /* ═══════════════ RESULT AREA ═══════════════ */
+    .result-wrap {
+      margin-top: 1.25rem;
+    }
+    .result-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-faint);
+      margin-bottom: 6px;
+    }
+    .result-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1rem 1.25rem;
+      min-height: 60px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .result-box:empty::before { content: 'Screening results and download links will appear here.'; }
+
+    /* ═══════════════ NOTICE / INFO ═══════════════ */
+    .info-box {
+      background: var(--info-bg);
+      border: 1px solid var(--info-border);
+      border-radius: var(--r);
+      padding: 0.875rem 1rem;
+      font-size: 12.5px;
+      color: #1e40af;
+      line-height: 1.55;
+      margin-bottom: 1.25rem;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .warn-box {
+      background: var(--warning-bg);
+      border: 1px solid #fcd34d;
+      border-radius: var(--r);
+      padding: 0.875rem 1rem;
+      font-size: 12.5px;
+      color: var(--warning);
+      line-height: 1.55;
+      margin-bottom: 1.25rem;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .divider { height: 1px; background: var(--border); margin: 1.25rem 0; }
+
+    /* ═══════════════ FOOTER ═══════════════ */
+    .app-footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 12px;
+      color: var(--text-faint);
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+
+    /* ═══════════════ RESPONSIVE ═══════════════ */
+    @media (max-width: 860px) {
+      .app-body { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }
+      .sidebar { order: 2; position: static; }
+      .main-panel { order: 1; }
+      .form-grid { grid-template-columns: 1fr; }
+      .tab-btn .tab-lbl { display: none; }
+      .sec-hdr { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .header-pills .pill:last-child { display: none; }
+    }
+    @media (max-width: 480px) {
+      .app-header { padding: 0 1rem; }
+      .brand-sub { display: none; }
+      .panel-body { padding: 1.25rem; }
+      .action-row { flex-direction: column; align-items: stretch; }
+      .btn-primary, .btn-teal, .btn-ghost { justify-content: center; }
     }
   </style>
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="mark">HR</div>
-        <div>
-          <h1>Bulk Resume Screening System</h1>
-          <p class="subtitle">AI-style resume ranking, CSV screening, and PDF data conversion</p>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="brand-mark">TS</div>
+    <div class="brand-text">
+      <span class="brand-name">HR TalentScan</span>
+      <span class="brand-sub">Resume Intelligence Platform</span>
+    </div>
+  </div>
+  <div class="header-pills">
+    <span class="pill accent">⚡ AI-Powered</span>
+    <span class="pill">HR Screening System</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ BODY ═══════════════════════════ -->
+<div class="app-body">
+
+  <!-- ── SIDEBAR ────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <div class="sidebar-card">
+      <div class="sidebar-heading">System Limits</div>
+      <div class="stat-item">
+        <span class="stat-icon">📄</span>
+        <div class="stat-body">
+          <div class="stat-val">1,000,000 files</div>
+          <div class="stat-desc">Resume upload limit per batch</div>
         </div>
       </div>
-      <div class="badge-row">
-        <span class="badge">TXT / DOCX / PDF</span>
-        <span class="badge">Excel Output</span>
-        <span class="badge">CSV Rows 1,000,000</span>
+      <div class="stat-item blue">
+        <span class="stat-icon">📊</span>
+        <div class="stat-body">
+          <div class="stat-val">1,000,000</div>
+          <div class="stat-desc">Candidate rows via CSV mode</div>
+        </div>
       </div>
-    </header>
-
-    <section class="surface">
-      <div class="summary">
-        <div class="metric"><strong>80+</strong><span>Shortlist score</span></div>
-        <div class="metric"><strong>60-79</strong><span>Manual review score</span></div>
-        <div class="metric"><strong>Below 60</strong><span>Not recommended</span></div>
+      <div class="stat-item purple">
+        <span class="stat-icon">⬇️</span>
+        <div class="stat-body">
+          <div class="stat-val">Excel / CSV</div>
+          <div class="stat-desc">Ranked results output format</div>
+        </div>
       </div>
+    </div>
 
-      <div class="content">
-        <section class="main">
-          <div class="section-title">
-            <h2>Resume Screening</h2>
-            <span class="pill">Up to 1,000,000 files</span>
-          </div>
-          <div class="row">
-            <div>
-              <label>Job Title</label>
-              <input id="jobTitle" value="Full Stack Developer">
-            </div>
-            <div>
-              <label>Minimum Experience</label>
-              <input id="minExperience" type="number" value="2">
-            </div>
-          </div>
-          <label>Preferred Skills</label>
-          <input id="preferredSkills" value="docker">
-          <label>Required Skills Checklist</label>
-          <div id="skills" class="skills"></div>
-          <label>Extra Required Skills</label>
-          <input id="extraSkills" placeholder="example: pandas, excel, linux">
-          <div class="upload">
-            <label>Upload Resumes</label>
-            <input id="resumeFiles" type="file" accept=".txt,.docx,.pdf" multiple>
-          </div>
-          <div class="actions">
-            <button class="primary" onclick="screenBatch()">Screen Resumes and Download Excel</button>
-            <button class="secondary" onclick="selectCommon()">Select Common Developer Skills</button>
-          </div>
-          <div class="status-block">
-            <div class="status-head">
-              <h2>Status</h2>
-              <span class="pill">Live API</span>
-            </div>
-            <pre id="out">Choose skills, upload resumes, then click the screening button.</pre>
-          </div>
-        </section>
-
-        <aside class="side">
-          <div class="tool">
-            <h3>PDF Data to CSV</h3>
-            <p class="hint">Extract readable PDF rows into a CSV file.</p>
-            <label>PDF Data Files</label>
-            <input id="pdfDataFiles" type="file" accept=".pdf" multiple>
-            <div class="actions">
-              <button class="blue" onclick="convertPdfToCsv()">Convert PDF to CSV</button>
-            </div>
-            <pre id="csvOut">Choose PDF data file(s), then click convert.</pre>
-          </div>
-
-          <div class="tool">
-            <h3>CSV Resume Screening</h3>
-            <p class="hint">Screen candidate rows directly from a CSV file.</p>
-            <label>CSV Data File</label>
-            <input id="csvDataFile" type="file" accept=".csv">
-            <div class="actions">
-              <button class="green" onclick="screenCsvData()">Screen CSV Data</button>
-            </div>
-            <pre id="csvScreenOut">Choose a CSV file, then click screen.</pre>
-          </div>
-
-          <div class="decision">
-            <div><strong>Input</strong><span>Resume / CSV / PDF</span></div>
-            <div><strong>Processing</strong><span>Skill and experience scoring</span></div>
-            <div><strong>Output</strong><span>XLSX or CSV download</span></div>
-          </div>
-        </aside>
+    <div class="sidebar-card">
+      <div class="sidebar-heading">Capabilities</div>
+      <div class="feature-list">
+        <div class="feat-row">
+          <span class="feat-icon">📋</span>
+          <span>Screen TXT, DOCX &amp; PDF resumes</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-icon">📊</span>
+          <span>Bulk CSV screening — up to 1M candidate rows</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-icon">🔄</span>
+          <span>Convert readable PDFs into structured CSV</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-icon">⬇️</span>
+          <span>Download ranked results as Excel workbook</span>
+        </div>
+        <div class="feat-row">
+          <span class="feat-icon">🎯</span>
+          <span>Skill matching, experience filtering &amp; scoring</span>
+        </div>
       </div>
-    </section>
-  </main>
-  <script>
-    const allSkills = [
-      'python','javascript','node.js','react','sql','sqlite','postgresql','mongodb',
-      'express','html','css','docker','aws','java','c++','git','rest api','api',
-      'machine learning','nlp','flask','fastapi','django'
-    ];
+    </div>
 
-    function renderSkills() {
-      skills.innerHTML = allSkills.map(skill => `
-        <label class="skill"><input type="checkbox" value="${skill}"> ${skill}</label>
-      `).join('');
+    <div class="notice">
+      <strong>ℹ️ Limit clarification:</strong> Resume file upload and CSV screening are
+      both configured with a <strong>1,000,000 item limit</strong>. Actual performance
+      depends on browser memory and your computer.
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN PANEL ─────────────────────────────────── -->
+  <main class="main-panel">
+
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tbtn-resume" onclick="switchTab('resume', this)">
+        <span class="tab-icon">📋</span>
+        <span class="tab-lbl">Resume Screening</span>
+      </button>
+      <button class="tab-btn" id="tbtn-csv" onclick="switchTab('csv', this)">
+        <span class="tab-icon">📊</span>
+        <span class="tab-lbl">CSV Screening</span>
+      </button>
+      <button class="tab-btn" id="tbtn-pdf" onclick="switchTab('pdf', this)">
+        <span class="tab-icon">🔄</span>
+        <span class="tab-lbl">PDF → CSV</span>
+      </button>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- ═══════════ TAB 1 : RESUME SCREENING ═══════════ -->
+      <div id="tab-resume" class="tab-pane active">
+
+        <div class="sec-hdr">
+          <div>
+            <div class="sec-title">Resume Screening</div>
+            <div class="sec-desc">
+              Define your job requirements, select required skills, and upload up to 1,000,000
+              resume files. The system will rank and score candidates automatically.
+            </div>
+          </div>
+          <span class="sec-badge">Max 1,000,000 Files</span>
+        </div>
+
+        <!-- Job details -->
+        <div class="form-grid">
+          <div class="fg">
+            <label for="jobTitle">Job Title</label>
+            <input type="text" id="jobTitle" value="Full Stack Developer" placeholder="e.g. Senior Software Engineer" />
+          </div>
+          <div class="fg">
+            <label for="minExperience">
+              Minimum Experience
+              <span class="lbl-hint">(years)</span>
+            </label>
+            <input type="number" id="minExperience" value="2" placeholder="e.g. 3" min="0" step="1" />
+          </div>
+          <div class="fg full">
+            <label for="preferredSkills">
+              Preferred Skills
+              <span class="lbl-hint">— comma-separated, optional bonus skills</span>
+            </label>
+            <input type="text" id="preferredSkills" value="Docker" placeholder="e.g. AWS, Docker, Kubernetes, REST API" />
+          </div>
+        </div>
+
+        <!-- Required skills -->
+        <div class="skills-wrap">
+          <div class="skills-topbar">
+            <span class="skills-lbl">Required Skills — click chips to select</span>
+            <span class="skills-count zero" id="selectedCount">0</span>
+          </div>
+          <div id="skills"></div>
+
+          <div class="quickadd-row">
+            <div class="quickadd-lbl">Quick-add skill sets</div>
+            <div class="quickadd-btns">
+              <button class="qa-btn" onclick="selectCommon('web')">🌐 Web Dev</button>
+              <button class="qa-btn" onclick="selectCommon('data')">📊 Data Science</button>
+              <button class="qa-btn" onclick="selectCommon('devops')">⚙️ DevOps</button>
+              <button class="qa-btn" onclick="selectCommon('mobile')">📱 Mobile</button>
+              <button class="qa-btn" onclick="selectCommon('backend')">🖥️ Backend</button>
+              <button class="qa-btn" onclick="selectCommon('ml')">🤖 ML / AI</button>
+              <button class="qa-btn" onclick="clearSkills()">✕ Clear all</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Extra skills -->
+        <div class="fg">
+          <label for="extraSkills">
+            Additional Required Skills
+            <span class="lbl-hint">— comma-separated, skills not in the list above</span>
+          </label>
+          <input type="text" id="extraSkills" placeholder="e.g. GraphQL, Terraform, Apache Kafka" />
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Upload -->
+        <div class="fg">
+          <label>Upload Resume Files <span class="lbl-hint">— TXT, DOCX, or PDF — up to 1,000,000 files</span></label>
+          <div class="upload-zone" id="uzResume">
+            <input type="file" id="resumeFiles" multiple
+              accept=".txt,.docx,.pdf"
+              onchange="handleFileChange('resumeFiles','uzResume','uzResumeTitle')" />
+            <span class="uz-icon">📂</span>
+            <div class="uz-title" id="uzResumeTitle">Drag &amp; drop files here, or click to browse</div>
+            <div class="uz-hint">One resume per file — each candidate's resume as a separate document</div>
+            <div class="fmt-row">
+              <span class="fmt-tag">PDF</span>
+              <span class="fmt-tag">DOCX</span>
+              <span class="fmt-tag">TXT</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-primary" onclick="screenBatch()">
+            ▶ &nbsp;Run Candidate Screening
+          </button>
+          <button class="btn-ghost" onclick="resetUpload('resumeFiles','uzResume','uzResumeTitle','Drag &amp; drop files here, or click to browse')">
+            ✕ Clear Files
+          </button>
+        </div>
+
+        <div class="result-wrap">
+          <div class="result-label">Output</div>
+          <div class="result-box" id="out"></div>
+        </div>
+
+      </div>
+      <!-- /tab-resume -->
+
+      <!-- ═══════════ TAB 2 : CSV SCREENING ═══════════ -->
+      <div id="tab-csv" class="tab-pane">
+
+        <div class="sec-hdr">
+          <div>
+            <div class="sec-title">CSV Candidate Screening</div>
+            <div class="sec-desc">
+              Upload a structured CSV file containing candidate data. Ideal for high-volume
+              recruitment pipelines — supports up to 1,000,000 candidate rows per file.
+            </div>
+          </div>
+          <span class="sec-badge">Up to 1M Rows</span>
+        </div>
+
+        <div class="info-box">
+          <span>📌</span>
+          <span>
+            Ensure your CSV includes columns for <strong>candidate name</strong>,
+            <strong>skills</strong>, and <strong>years of experience</strong>.
+            The screening engine maps these automatically. CSV mode supports up to 1,000,000 rows.
+          </span>
+        </div>
+
+        <div class="fg">
+          <label>Upload CSV File <span class="lbl-hint">— one candidate per row</span></label>
+          <div class="upload-zone" id="uzCsv">
+            <input type="file" id="csvDataFile" accept=".csv"
+              onchange="handleFileChange('csvDataFile','uzCsv','uzCsvTitle')" />
+            <span class="uz-icon">📊</span>
+            <div class="uz-title" id="uzCsvTitle">Drag &amp; drop your CSV file here</div>
+            <div class="uz-hint">Structured candidate data — up to 1,000,000 rows supported</div>
+            <div class="fmt-row">
+              <span class="fmt-tag">CSV</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-teal" onclick="screenCsvData()">
+            ▶ &nbsp;Screen All Candidates
+          </button>
+          <button class="btn-ghost" onclick="resetUpload('csvDataFile','uzCsv','uzCsvTitle','Drag &amp; drop your CSV file here')">
+            ✕ Clear File
+          </button>
+        </div>
+
+        <div class="result-wrap">
+          <div class="result-label">Output</div>
+          <div class="result-box" id="csvScreenOut"></div>
+        </div>
+
+      </div>
+      <!-- /tab-csv -->
+
+      <!-- ═══════════ TAB 3 : PDF → CSV ═══════════ -->
+      <div id="tab-pdf" class="tab-pane">
+
+        <div class="sec-hdr">
+          <div>
+            <div class="sec-title">PDF to CSV Converter</div>
+            <div class="sec-desc">
+              Extract structured text from readable PDF data files and export to CSV format
+              for downstream processing or CSV-mode screening.
+            </div>
+          </div>
+          <span class="sec-badge">Text PDFs Only</span>
+        </div>
+
+        <div class="warn-box">
+          <span>⚠️</span>
+          <span>
+            Only <strong>text-readable PDFs</strong> are supported. Scanned or image-based PDFs
+            (where text cannot be selected) will not convert accurately. For image PDFs,
+            pre-process with an OCR tool first.
+          </span>
+        </div>
+
+        <div class="fg">
+          <label>Upload PDF Data Files <span class="lbl-hint">— multiple files allowed</span></label>
+          <div class="upload-zone" id="uzPdf">
+            <input type="file" id="pdfDataFiles" multiple accept=".pdf"
+              onchange="handleFileChange('pdfDataFiles','uzPdf','uzPdfTitle')" />
+            <span class="uz-icon">🔄</span>
+            <div class="uz-title" id="uzPdfTitle">Drag &amp; drop PDF files here</div>
+            <div class="uz-hint">Each file will be parsed and exported as structured CSV rows</div>
+            <div class="fmt-row">
+              <span class="fmt-tag">PDF</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-teal" onclick="convertPdfToCsv()">
+            🔄 &nbsp;Convert to CSV
+          </button>
+          <button class="btn-ghost" onclick="resetUpload('pdfDataFiles','uzPdf','uzPdfTitle','Drag &amp; drop PDF files here')">
+            ✕ Clear Files
+          </button>
+        </div>
+
+        <div class="result-wrap">
+          <div class="result-label">Output</div>
+          <div class="result-box" id="csvOut"></div>
+        </div>
+
+      </div>
+      <!-- /tab-pdf -->
+
+    </div><!-- /panel-body -->
+  </main><!-- /main-panel -->
+
+</div><!-- /app-body -->
+
+<footer class="app-footer">
+  HR TalentScan — HR AI Resume Ranking System &nbsp;·&nbsp; Final Year Project &nbsp;·&nbsp;
+  All screening runs locally, no data sent to third-party services.
+</footer>
+
+<!-- ═══════════════════════════ JAVASCRIPT ═══════════════════════════ -->
+<script>
+
+  /* ── TAB SWITCHER ──────────────────────────────── */
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── SKILLS DATA ───────────────────────────────── */
+  const ALL_SKILLS = [
+    'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'C#', 'Go', 'Rust', 'PHP', 'Ruby',
+    'React', 'Vue.js', 'Angular', 'Node.js', 'Next.js', 'Django', 'FastAPI', 'Flask',
+    'Spring Boot', 'Laravel', 'Express.js', 'ASP.NET',
+    'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Elasticsearch',
+    'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'CI/CD', 'Linux', 'Terraform', 'Ansible',
+    'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Hugging Face',
+    'Git', 'REST API', 'GraphQL', 'Microservices', 'Agile', 'Scrum',
+    'Swift', 'Kotlin', 'React Native', 'Flutter',
+    'HTML', 'CSS', 'Sass', 'Tailwind CSS', 'WebSockets'
+  ];
+
+  const COMMON_SETS = {
+    web:     ['React', 'JavaScript', 'TypeScript', 'Node.js', 'HTML', 'CSS', 'Next.js'],
+    data:    ['Python', 'SQL', 'Pandas', 'NumPy', 'Scikit-learn', 'PostgreSQL'],
+    devops:  ['Docker', 'Kubernetes', 'CI/CD', 'AWS', 'Linux', 'Terraform', 'Ansible'],
+    mobile:  ['Swift', 'Kotlin', 'React Native', 'Flutter'],
+    backend: ['Python', 'Java', 'Node.js', 'REST API', 'PostgreSQL', 'Microservices', 'Docker'],
+    ml:      ['Python', 'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Hugging Face']
+  };
+
+  let selectedSet = new Set();
+
+  /* ── renderSkills ──────────────────────────────── */
+  function renderSkills() {
+    const container = document.getElementById('skills');
+    container.innerHTML = '';
+    ALL_SKILLS.forEach(skill => {
+      const chip = document.createElement('span');
+      chip.className = 'skill-chip' + (selectedSet.has(skill) ? ' selected' : '');
+      chip.innerHTML = '<span class="chip-check">✓</span> ' + skill;
+      chip.onclick = () => toggleSkill(skill, chip);
+      container.appendChild(chip);
+    });
+    updateCount();
+  }
+
+  function toggleSkill(skill, chip) {
+    if (selectedSet.has(skill)) {
+      selectedSet.delete(skill);
+      chip.classList.remove('selected');
+    } else {
+      selectedSet.add(skill);
+      chip.classList.add('selected');
     }
+    updateCount();
+  }
 
-    function selectedSkills() {
-      const checked = Array.from(document.querySelectorAll('#skills input:checked')).map(x => x.value);
-      const extra = extraSkills.value.split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-      return [...new Set([...checked, ...extra])];
-    }
+  function updateCount() {
+    const el = document.getElementById('selectedCount');
+    el.textContent = selectedSet.size;
+    el.className = 'skills-count' + (selectedSet.size === 0 ? ' zero' : '');
+  }
 
-    function selectCommon() {
-      const common = new Set(['node.js','react','sql','javascript','html','css','docker','git']);
-      document.querySelectorAll('#skills input').forEach(box => box.checked = common.has(box.value));
-    }
+  /* ── selectedSkills ────────────────────────────── */
+  function selectedSkills() {
+    const extra = (document.getElementById('extraSkills')?.value || '')
+      .split(',')
+      .map(x => x.trim())
+      .filter(Boolean);
+    return Array.from(new Set([...selectedSet, ...extra]));
+  }
 
-    async function screenBatch() {
-      const files = resumeFiles.files;
-      const req = selectedSkills();
-      if (!files.length) {
-        alert('Please choose at least one resume.');
-        return;
-      }
-      if (files.length > 1000000) {
-        alert('Maximum 1,000,000 resumes allowed.');
-        return;
-      }
-      if (!req.length) {
-        alert('Please select at least one required skill.');
-        return;
-      }
-      const form = new FormData();
-      for (const file of files) form.append('resumes', file);
-      form.append('job_title', jobTitle.value);
-      form.append('required_skills', req.join(','));
-      form.append('preferred_skills', preferredSkills.value);
-      form.append('min_experience_yrs', minExperience.value);
-
-      out.textContent = 'Screening ' + files.length + ' resume(s)...';
-      const res = await fetch('/screen-batch', { method: 'POST', body: form });
-      if (!res.ok) {
-        const error = await res.json();
-        out.textContent = JSON.stringify(error, null, 2);
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'resume_screening_results.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
-      out.textContent = 'Done. Excel file downloaded: resume_screening_results.xlsx';
-    }
-
-    async function convertPdfToCsv() {
-      const files = pdfDataFiles.files;
-      if (!files.length) {
-        alert('Please choose at least one PDF file.');
-        return;
-      }
-      const form = new FormData();
-      for (const file of files) form.append('pdf_files', file);
-      csvOut.textContent = 'Converting ' + files.length + ' PDF file(s) to CSV...';
-      const res = await fetch('/pdf-to-csv', { method: 'POST', body: form });
-      if (!res.ok) {
-        const error = await res.json();
-        csvOut.textContent = JSON.stringify(error, null, 2);
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'pdf_data_output.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-      csvOut.textContent = 'Done. CSV file downloaded: pdf_data_output.csv';
-    }
-
-    async function screenCsvData() {
-      const req = selectedSkills();
-      if (!csvDataFile.files.length) {
-        alert('Please choose one CSV file.');
-        return;
-      }
-      if (!req.length) {
-        alert('Please select at least one required skill.');
-        return;
-      }
-      const form = new FormData();
-      form.append('csv_file', csvDataFile.files[0]);
-      form.append('job_title', jobTitle.value);
-      form.append('required_skills', req.join(','));
-      form.append('preferred_skills', preferredSkills.value);
-      form.append('min_experience_yrs', minExperience.value);
-      csvScreenOut.textContent = 'Screening CSV rows...';
-      const res = await fetch('/screen-csv', { method: 'POST', body: form });
-      if (!res.ok) {
-        const error = await res.json();
-        csvScreenOut.textContent = JSON.stringify(error, null, 2);
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'csv_resume_screening_results.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
-      csvScreenOut.textContent = 'Done. Excel file downloaded: csv_resume_screening_results.xlsx';
-    }
-
+  /* ── selectCommon ──────────────────────────────── */
+  function selectCommon(category) {
+    const skills = COMMON_SETS[category] || [];
+    skills.forEach(s => selectedSet.add(s));
     renderSkills();
-    selectCommon();
-  </script>
+  }
+
+  function clearSkills() {
+    selectedSet.clear();
+    renderSkills();
+  }
+
+  /* ── FILE INPUT HELPERS ────────────────────────── */
+  function handleFileChange(inputId, zoneId, titleId) {
+    const input = document.getElementById(inputId);
+    const zone  = document.getElementById(zoneId);
+    const title = document.getElementById(titleId);
+    if (!input || !input.files.length) return;
+    const n = input.files.length;
+    title.textContent = n === 1 ? input.files[0].name : n + ' files selected';
+    zone.classList.add('has-files');
+  }
+
+  function resetUpload(inputId, zoneId, titleId, defaultText) {
+    const input = document.getElementById(inputId);
+    const zone  = document.getElementById(zoneId);
+    const title = document.getElementById(titleId);
+    if (input) input.value = '';
+    if (zone)  zone.classList.remove('has-files');
+    if (title) title.innerHTML = defaultText;
+  }
+
+  /* ── DRAG-OVER EFFECTS ─────────────────────────── */
+  document.querySelectorAll('.upload-zone').forEach(zone => {
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop',      () => zone.classList.remove('dragover'));
+  });
+
+  function screenBatch() {
+    const out = document.getElementById('out');
+    const files = document.getElementById('resumeFiles').files;
+    const req = selectedSkills();
+    if (!files.length) {
+      alert('Please choose at least one resume file.');
+      return;
+    }
+    if (files.length > 1000000) {
+      alert('Maximum 1,000,000 resumes allowed.');
+      return;
+    }
+    if (!req.length) {
+      alert('Please select at least one required skill.');
+      return;
+    }
+    const form = new FormData();
+    for (const file of files) form.append('resumes', file);
+    form.append('job_title', document.getElementById('jobTitle').value || 'Selected Job');
+    form.append('required_skills', req.join(','));
+    form.append('preferred_skills', document.getElementById('preferredSkills').value || '');
+    form.append('min_experience_yrs', document.getElementById('minExperience').value || '0');
+    out.style.fontStyle = 'normal';
+    out.textContent = 'Screening ' + files.length + ' resume file(s). Please wait...';
+    fetch('/screen-batch', { method: 'POST', body: form })
+      .then(async res => {
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(JSON.stringify(error, null, 2));
+        }
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resume_screening_results.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+        out.textContent = 'Done. Excel file downloaded: resume_screening_results.xlsx';
+      })
+      .catch(err => { out.textContent = err.message || String(err); });
+  }
+
+  function convertPdfToCsv() {
+    const out = document.getElementById('csvOut');
+    const files = document.getElementById('pdfDataFiles').files;
+    if (!files.length) {
+      alert('Please choose at least one PDF file.');
+      return;
+    }
+    const form = new FormData();
+    for (const file of files) form.append('pdf_files', file);
+    out.style.fontStyle = 'normal';
+    out.textContent = 'Converting ' + files.length + ' PDF file(s) to CSV. Please wait...';
+    fetch('/pdf-to-csv', { method: 'POST', body: form })
+      .then(async res => {
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(JSON.stringify(error, null, 2));
+        }
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pdf_data_output.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        out.textContent = 'Done. CSV file downloaded: pdf_data_output.csv';
+      })
+      .catch(err => { out.textContent = err.message || String(err); });
+  }
+
+  function screenCsvData() {
+    const out = document.getElementById('csvScreenOut');
+    const input = document.getElementById('csvDataFile');
+    const req = selectedSkills();
+    if (!input.files.length) {
+      alert('Please choose one CSV file.');
+      return;
+    }
+    if (!req.length) {
+      alert('Please select at least one required skill in Resume Screening first.');
+      return;
+    }
+    const form = new FormData();
+    form.append('csv_file', input.files[0]);
+    form.append('job_title', document.getElementById('jobTitle').value || 'Selected Job');
+    form.append('required_skills', req.join(','));
+    form.append('preferred_skills', document.getElementById('preferredSkills').value || '');
+    form.append('min_experience_yrs', document.getElementById('minExperience').value || '0');
+    out.style.fontStyle = 'normal';
+    out.textContent = 'Screening CSV rows. Please wait...';
+    fetch('/screen-csv', { method: 'POST', body: form })
+      .then(async res => {
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(JSON.stringify(error, null, 2));
+        }
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'csv_resume_screening_results.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+        out.textContent = 'Done. Excel file downloaded: csv_resume_screening_results.xlsx';
+      })
+      .catch(err => { out.textContent = err.message || String(err); });
+  }
+
+  /* ── INIT ──────────────────────────────────────── */
+  renderSkills();
+
+</script>
 </body>
-</html>"""
+</html>
+"""
 
 
 SKILL_KEYWORDS = [
-    "python", "javascript", "node.js", "node", "react", "sql", "sqlite",
-    "postgresql", "mongodb", "express", "html", "css", "docker", "aws",
-    "java", "c++", "git", "rest api", "api", "machine learning", "nlp",
-    "flask", "fastapi", "django",
+    "python", "javascript", "typescript", "node.js", "node", "react", "vue.js",
+    "angular", "next.js", "html", "css", "sass", "tailwind css", "sql",
+    "sqlite", "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
+    "express", "express.js", "rest api", "api", "graphql", "java", "c++",
+    "c#", "go", "rust", "php", "ruby", "swift", "kotlin", "react native",
+    "flutter", "spring boot", "laravel", "asp.net", "docker", "kubernetes",
+    "aws", "azure", "gcp", "ci/cd", "linux", "terraform", "ansible", "git",
+    "machine learning", "ml", "ai", "nlp", "tensorflow", "pytorch",
+    "scikit-learn", "pandas", "numpy", "hugging face", "flask", "fastapi",
+    "django", "microservices", "agile", "scrum", "websockets",
 ]
 
 
