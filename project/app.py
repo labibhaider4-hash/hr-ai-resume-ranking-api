@@ -24,9 +24,12 @@ UPLOAD_DIR = BASE_DIR / "uploads"
 DB_PATH = DATA_DIR / "hr_python_api.db"
 SECRET = os.environ.get("JWT_SECRET", "python_demo_secret")
 PORT = int(os.environ.get("PORT", "5000"))
+APP_VERSION = "python-1.1.0"
+MAX_REQUEST_BYTES = int(os.environ.get("MAX_REQUEST_BYTES", str(250 * 1024 * 1024)))
 
 DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR.mkdir(exist_ok=True)
+MAX_RESUME_FILES = 200
 MAX_CSV_SCREENING_ROWS = 1_000_000
 
 
@@ -409,72 +412,358 @@ RESUME_SCREEN_PAGE = r"""<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bulk Resume Screening System</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111827; }
-    .wrap { max-width: 980px; margin: 35px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.08); }
-    h1 { margin-top: 0; color: #4f36b8; }
-    .box { padding: 14px; background: #eef2ff; border-left: 5px solid #4f36b8; margin: 18px 0; }
-    label { display:block; margin-top: 16px; font-weight: bold; color:#475569; }
-    input { width: 100%; padding: 11px; border:1px solid #cbd5e1; border-radius:6px; margin-top:6px; }
-    button { background: #4f36b8; color: white; border: 0; padding: 12px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top:16px; }
-    button.secondary { background:#2563eb; }
-    pre { background: #0f172a; color: #dbeafe; padding: 16px; border-radius: 8px; overflow: auto; white-space: pre-wrap; }
-    .skills { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 14px; margin-top: 10px; }
-    .skill { background:#f8fafc; border:1px solid #dbe3ef; border-radius:6px; padding:8px; font-size:14px; }
-    .skill input { width:auto; margin:0 6px 0 0; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
-    .result { margin-top: 20px; }
-    .hint { color:#64748b; font-size:14px; line-height:1.45; }
-    .section { border-top:1px solid #e2e8f0; margin-top:30px; padding-top:24px; }
-    @media (max-width: 780px) { .skills, .row { grid-template-columns: 1fr; } }
+    :root {
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d9e0ea;
+      --soft: #f5f7fb;
+      --panel: #ffffff;
+      --primary: #5b3fd6;
+      --primary-dark: #4023a2;
+      --blue: #2563eb;
+      --green: #0f9f6e;
+      --orange: #f59e0b;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      background: #eef2f7;
+      color: var(--ink);
+    }
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 22px 44px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 21px;
+      flex: 0 0 auto;
+    }
+    h1 { margin: 0; font-size: 28px; line-height: 1.15; }
+    .subtitle { margin: 5px 0 0; color: var(--muted); font-size: 14px; }
+    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .badge {
+      border: 1px solid var(--line);
+      background: white;
+      color: #344054;
+      border-radius: 999px;
+      padding: 8px 11px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .surface {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px rgba(23, 32, 51, .08);
+      overflow: hidden;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+    .metric {
+      padding: 18px 22px;
+      border-right: 1px solid var(--line);
+    }
+    .metric:last-child { border-right: 0; }
+    .metric strong { display: block; font-size: 22px; margin-bottom: 4px; }
+    .metric span { color: var(--muted); font-size: 13px; }
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+      gap: 0;
+    }
+    .main {
+      padding: 24px;
+      border-right: 1px solid var(--line);
+    }
+    .side {
+      padding: 24px;
+      background: #fbfcfe;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 0 0 16px;
+    }
+    h2 { margin: 0; font-size: 19px; line-height: 1.25; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: var(--primary-dark);
+      font-weight: 800;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    label {
+      display: block;
+      margin: 14px 0 7px;
+      font-weight: 800;
+      color: #344054;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid #c8d2df;
+      border-radius: 6px;
+      background: white;
+      color: var(--ink);
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(91, 63, 214, .14);
+    }
+    input[type="file"] {
+      padding: 9px;
+      background: #f8fafc;
+    }
+    button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 6px;
+      padding: 11px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(23, 32, 51, .12); }
+    .primary { background: var(--primary); color: white; }
+    .secondary { background: #e8eefc; color: #1d4ed8; }
+    .blue { background: var(--blue); color: white; }
+    .green { background: var(--green); color: white; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .skills {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .skill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      min-height: 42px;
+      padding: 9px 10px;
+      background: #f8fafc;
+      border: 1px solid #d7e0eb;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #344054;
+      cursor: pointer;
+    }
+    .skill input { width: auto; min-height: auto; margin: 0; accent-color: var(--primary); }
+    .upload {
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px dashed #aebbd0;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .status-block { margin-top: 22px; }
+    .status-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    pre {
+      min-height: 88px;
+      margin: 0;
+      background: #161b2b;
+      color: #eef4ff;
+      padding: 15px;
+      border-radius: 6px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .tool {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      margin-bottom: 16px;
+    }
+    .tool:last-child { margin-bottom: 0; }
+    .tool h3 { margin: 0 0 6px; font-size: 17px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0 0 12px; }
+    .decision {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .decision div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: white;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .decision strong { color: var(--ink); }
+    @media (max-width: 980px) {
+      .topbar, .content { display: block; }
+      .badge-row { justify-content: flex-start; margin-top: 14px; }
+      .main { border-right: 0; border-bottom: 1px solid var(--line); }
+      .summary { grid-template-columns: 1fr; }
+      .metric { border-right: 0; border-bottom: 1px solid var(--line); }
+      .metric:last-child { border-bottom: 0; }
+    }
+    @media (max-width: 760px) {
+      .shell { padding: 18px 12px 28px; }
+      h1 { font-size: 23px; }
+      .main, .side { padding: 18px; }
+      .skills, .row { grid-template-columns: 1fr; }
+      .actions button { width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Bulk Resume Screening System</h1>
-    <p>Select required skills, upload resumes, and download the screening result in Excel.</p>
-    <div class="box"><strong>Decision:</strong> 80+ Shortlist, 60-79 Review, below 60 Not Recommended. You can upload up to 200 resumes at once.</div>
-    <label>Job Title</label>
-    <input id="jobTitle" value="Full Stack Developer">
-    <div class="row">
-      <div>
-        <label>Minimum Experience in Years</label>
-        <input id="minExperience" type="number" value="2">
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">HR</div>
+        <div>
+          <h1>Bulk Resume Screening System</h1>
+          <p class="subtitle">AI-style resume ranking, CSV screening, and PDF data conversion</p>
+        </div>
       </div>
-      <div>
-        <label>Preferred Skills comma separated optional</label>
-        <input id="preferredSkills" value="docker">
+      <div class="badge-row">
+        <span class="badge">TXT / DOCX / PDF</span>
+        <span class="badge">Excel Output</span>
+        <span class="badge">CSV Rows 1,000,000</span>
       </div>
-    </div>
-    <label>Required Skills Checklist</label>
-    <div id="skills" class="skills"></div>
-    <p class="hint">Tick the skills needed for the job. You may also type extra required skills below.</p>
-    <label>Extra Required Skills comma separated optional</label>
-    <input id="extraSkills" placeholder="example: pandas, excel, linux">
-    <label>Upload Resumes TXT, DOCX, or PDF</label>
-    <input id="resumeFiles" type="file" accept=".txt,.docx,.pdf" multiple>
-    <button onclick="screenBatch()">Screen Resumes and Download Excel</button>
-    <button class="secondary" onclick="selectCommon()">Select Common Developer Skills</button>
-    <div class="result">
-      <h2>Status</h2>
-      <pre id="out">Choose skills, upload resumes, then click the screening button.</pre>
-    </div>
-    <div class="section">
-      <h2>PDF Data to CSV Converter</h2>
-      <p class="hint">Upload PDF data files. The API extracts readable rows and downloads a CSV file for Excel or database operations.</p>
-      <label>Upload PDF Data Files</label>
-      <input id="pdfDataFiles" type="file" accept=".pdf" multiple>
-      <button onclick="convertPdfToCsv()">Convert PDF to CSV</button>
-      <pre id="csvOut">Choose PDF data file(s), then click convert.</pre>
-    </div>
-    <div class="section">
-      <h2>CSV Resume Data Screening</h2>
-      <p class="hint">Upload a CSV that already contains resume/candidate data. The API screens each CSV row and downloads Excel results.</p>
-      <label>Upload CSV Data File</label>
-      <input id="csvDataFile" type="file" accept=".csv">
-      <button onclick="screenCsvData()">Screen CSV Data and Download Excel</button>
-      <pre id="csvScreenOut">Choose a CSV file, then click screen.</pre>
-    </div>
-  </div>
+    </header>
+
+    <section class="surface">
+      <div class="summary">
+        <div class="metric"><strong>80+</strong><span>Shortlist score</span></div>
+        <div class="metric"><strong>60-79</strong><span>Manual review score</span></div>
+        <div class="metric"><strong>Below 60</strong><span>Not recommended</span></div>
+      </div>
+
+      <div class="content">
+        <section class="main">
+          <div class="section-title">
+            <h2>Resume Screening</h2>
+            <span class="pill">Up to 200 files</span>
+          </div>
+          <div class="row">
+            <div>
+              <label>Job Title</label>
+              <input id="jobTitle" value="Full Stack Developer">
+            </div>
+            <div>
+              <label>Minimum Experience</label>
+              <input id="minExperience" type="number" value="2">
+            </div>
+          </div>
+          <label>Preferred Skills</label>
+          <input id="preferredSkills" value="docker">
+          <label>Required Skills Checklist</label>
+          <div id="skills" class="skills"></div>
+          <label>Extra Required Skills</label>
+          <input id="extraSkills" placeholder="example: pandas, excel, linux">
+          <div class="upload">
+            <label>Upload Resumes</label>
+            <input id="resumeFiles" type="file" accept=".txt,.docx,.pdf" multiple>
+          </div>
+          <div class="actions">
+            <button class="primary" onclick="screenBatch()">Screen Resumes and Download Excel</button>
+            <button class="secondary" onclick="selectCommon()">Select Common Developer Skills</button>
+          </div>
+          <div class="status-block">
+            <div class="status-head">
+              <h2>Status</h2>
+              <span class="pill">Live API</span>
+            </div>
+            <pre id="out">Choose skills, upload resumes, then click the screening button.</pre>
+          </div>
+        </section>
+
+        <aside class="side">
+          <div class="tool">
+            <h3>PDF Data to CSV</h3>
+            <p class="hint">Extract readable PDF rows into a CSV file.</p>
+            <label>PDF Data Files</label>
+            <input id="pdfDataFiles" type="file" accept=".pdf" multiple>
+            <div class="actions">
+              <button class="blue" onclick="convertPdfToCsv()">Convert PDF to CSV</button>
+            </div>
+            <pre id="csvOut">Choose PDF data file(s), then click convert.</pre>
+          </div>
+
+          <div class="tool">
+            <h3>CSV Resume Screening</h3>
+            <p class="hint">Screen candidate rows directly from a CSV file.</p>
+            <label>CSV Data File</label>
+            <input id="csvDataFile" type="file" accept=".csv">
+            <div class="actions">
+              <button class="green" onclick="screenCsvData()">Screen CSV Data</button>
+            </div>
+            <pre id="csvScreenOut">Choose a CSV file, then click screen.</pre>
+          </div>
+
+          <div class="decision">
+            <div><strong>Input</strong><span>Resume / CSV / PDF</span></div>
+            <div><strong>Processing</strong><span>Skill and experience scoring</span></div>
+            <div><strong>Output</strong><span>XLSX or CSV download</span></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
   <script>
     const allSkills = [
       'python','javascript','node.js','react','sql','sqlite','postgresql','mongodb',
@@ -1067,9 +1356,53 @@ def score_resume(parsed, required, preferred, min_exp, job_title):
     }
 
 
+def add_common_headers(handler):
+    request_id = getattr(handler, "request_id", None) or str(uuid.uuid4())
+    handler.send_header("X-Request-ID", request_id)
+    handler.send_header("X-Content-Type-Options", "nosniff")
+    handler.send_header("X-Frame-Options", "DENY")
+    handler.send_header("Referrer-Policy", "no-referrer")
+    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    handler.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+
+
+def api_docs():
+    return {
+        "name": "HR AI Resume Ranking API",
+        "version": APP_VERSION,
+        "limits": {
+            "max_request_bytes": MAX_REQUEST_BYTES,
+            "max_resume_files_per_batch": MAX_RESUME_FILES,
+            "max_csv_screening_rows": MAX_CSV_SCREENING_ROWS,
+        },
+        "public_endpoints": [
+            {"method": "GET", "path": "/", "description": "Professional browser UI"},
+            {"method": "GET", "path": "/health", "description": "Service health and runtime metadata"},
+            {"method": "GET", "path": "/api/docs", "description": "Machine-readable route catalog"},
+            {"method": "POST", "path": "/screen-resume", "description": "Screen one TXT, DOCX, or PDF resume"},
+            {"method": "POST", "path": "/screen-batch", "description": "Screen up to 200 resume files and download XLSX"},
+            {"method": "POST", "path": "/pdf-to-csv", "description": "Convert readable PDF data files into CSV"},
+            {"method": "POST", "path": "/screen-csv", "description": "Screen CSV candidate rows and download XLSX"},
+        ],
+        "authenticated_endpoints": [
+            {"method": "POST", "path": "/auth/register"},
+            {"method": "POST", "path": "/auth/login"},
+            {"method": "POST", "path": "/candidates"},
+            {"method": "GET", "path": "/candidates"},
+            {"method": "POST", "path": "/jobs"},
+            {"method": "GET", "path": "/jobs"},
+            {"method": "POST", "path": "/resumes/upload"},
+            {"method": "GET", "path": "/resumes/<resume_id>"},
+            {"method": "POST", "path": "/ranking/job/<job_id>/rank-candidate/<candidate_id>"},
+        ],
+    }
+
+
 def json_response(handler, status, payload):
     data = json.dumps(payload, default=str).encode()
     handler.send_response(status)
+    add_common_headers(handler)
     handler.send_header("Content-Type", "application/json")
     handler.send_header("Content-Length", str(len(data)))
     handler.end_headers()
@@ -1159,6 +1492,7 @@ def create_xlsx(headers, rows, widths):
 
 def xlsx_response(handler, filename, content):
     handler.send_response(200)
+    add_common_headers(handler)
     handler.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
     handler.send_header("Content-Length", str(len(content)))
@@ -1169,6 +1503,7 @@ def xlsx_response(handler, filename, content):
 def csv_response(handler, filename, text):
     data = text.encode("utf-8-sig")
     handler.send_response(200)
+    add_common_headers(handler)
     handler.send_header("Content-Type", "text/csv; charset=utf-8")
     handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
     handler.send_header("Content-Length", str(len(data)))
@@ -1179,6 +1514,7 @@ def csv_response(handler, filename, text):
 def html_response(handler, status, html):
     data = html.encode("utf-8")
     handler.send_response(status)
+    add_common_headers(handler)
     handler.send_header("Content-Type", "text/html; charset=utf-8")
     handler.send_header("Content-Length", str(len(data)))
     handler.end_headers()
@@ -1197,6 +1533,10 @@ class MultipartItem:
         self.filename = filename
         self.file = BytesIO(value)
         self.value = value.decode("utf-8", errors="ignore")
+
+
+class RequestTooLarge(Exception):
+    pass
 
 
 class MultipartForm:
@@ -1248,6 +1588,8 @@ def parse_multipart_form(handler):
     if not boundary:
         return None
     length = int(handler.headers.get("Content-Length", "0"))
+    if length > MAX_REQUEST_BYTES:
+        raise RequestTooLarge(f"Request body is too large. Maximum allowed size is {MAX_REQUEST_BYTES} bytes.")
     body = handler.rfile.read(length)
     boundary_bytes = b"--" + boundary.encode()
     form = MultipartForm()
@@ -1284,6 +1626,10 @@ class App(BaseHTTPRequestHandler):
     def log_message(self, *_):
         return
 
+    def handle_one_request(self):
+        self.request_id = str(uuid.uuid4())
+        super().handle_one_request()
+
     def send_json(self, status, payload):
         json_response(self, status, payload)
 
@@ -1292,9 +1638,17 @@ class App(BaseHTTPRequestHandler):
 
     def read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
+        if length > MAX_REQUEST_BYTES:
+            raise RequestTooLarge(f"Request body is too large. Maximum allowed size is {MAX_REQUEST_BYTES} bytes.")
         if length == 0:
             return {}
         return json.loads(self.rfile.read(length).decode())
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        add_common_headers(self)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def current_user(self):
         auth = self.headers.get("Authorization", "")
@@ -1325,7 +1679,20 @@ class App(BaseHTTPRequestHandler):
             if path == "/":
                 self.send_html(200, RESUME_SCREEN_PAGE)
             elif path == "/health":
-                self.send_json(200, {"status": "healthy", "version": "python-1.0.0"})
+                self.send_json(200, {
+                    "status": "healthy",
+                    "version": APP_VERSION,
+                    "service": "hr-ai-resume-ranking-api",
+                    "request_id": self.request_id,
+                    "time": now(),
+                    "limits": {
+                        "max_request_bytes": MAX_REQUEST_BYTES,
+                        "max_resume_files_per_batch": MAX_RESUME_FILES,
+                        "max_csv_screening_rows": MAX_CSV_SCREENING_ROWS,
+                    },
+                })
+            elif path == "/api/docs":
+                self.send_json(200, api_docs())
             elif path == "/stats":
                 with db() as conn:
                     self.send_json(200, {
@@ -1367,6 +1734,12 @@ class App(BaseHTTPRequestHandler):
             else:
                 status = 404
                 self.send_json(404, {"error": f"Route not found: GET {path}"})
+        except RequestTooLarge as exc:
+            status = 413
+            self.send_json(413, {"error": "Request too large", "message": str(exc), "request_id": self.request_id})
+        except Exception as exc:
+            status = 500
+            self.send_json(500, {"error": "Internal server error", "message": str(exc), "request_id": self.request_id})
         finally:
             self.log_request_row(status, start)
 
@@ -1479,9 +1852,12 @@ class App(BaseHTTPRequestHandler):
             else:
                 status = 404
                 self.send_json(404, {"error": f"Route not found: POST {path}"})
+        except RequestTooLarge as exc:
+            status = 413
+            self.send_json(413, {"error": "Request too large", "message": str(exc), "request_id": self.request_id})
         except Exception as exc:
             status = 500
-            self.send_json(500, {"error": "Internal server error", "message": str(exc)})
+            self.send_json(500, {"error": "Internal server error", "message": str(exc), "request_id": self.request_id})
         finally:
             self.log_request_row(status, start)
 
@@ -1583,8 +1959,8 @@ class App(BaseHTTPRequestHandler):
         if not files:
             self.send_json(400, {"error": "Please upload at least one resume"})
             return
-        if len(files) > 200:
-            self.send_json(400, {"error": "Maximum 200 resumes are allowed in one screening batch"})
+        if len(files) > MAX_RESUME_FILES:
+            self.send_json(400, {"error": f"Maximum {MAX_RESUME_FILES} resumes are allowed in one screening batch"})
             return
 
         required = {

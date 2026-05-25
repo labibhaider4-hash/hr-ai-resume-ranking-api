@@ -2,6 +2,12 @@
 
 This is a Python standard-library version of the project. It does not need Flask, FastAPI, or external packages.
 
+## Documentation
+
+- [Full Project Documentation](PROJECT_DOCUMENTATION.md)
+- [API Reference](API_REFERENCE.md)
+- [LinkedIn Upload Guide](LINKEDIN_GUIDE.md)
+
 ## How To Run
 
 ```bash
@@ -53,6 +59,7 @@ GET http://127.0.0.1:5000/health
 - `POST /screen-batch` for up to 200 resumes and Excel output
 - `POST /pdf-to-csv` for converting PDF data files to CSV
 - `POST /screen-csv` for screening resume/candidate data from a CSV file
+- `GET /api/docs` for machine-readable API documentation
 - `GET /stats`
 
 ## Notes
