@@ -1,5 +1,4 @@
 import base64
-import cgi
 import csv
 import hashlib
 import hmac
@@ -1083,6 +1082,95 @@ def row_to_dict(row):
     return {k: row[k] for k in row.keys()}
 
 
+class MultipartItem:
+    def __init__(self, name, value=b"", filename=None):
+        self.name = name
+        self.filename = filename
+        self.file = BytesIO(value)
+        self.value = value.decode("utf-8", errors="ignore")
+
+
+class MultipartForm:
+    def __init__(self):
+        self.items = {}
+
+    def add(self, item):
+        if item.name in self.items:
+            existing = self.items[item.name]
+            if isinstance(existing, list):
+                existing.append(item)
+            else:
+                self.items[item.name] = [existing, item]
+        else:
+            self.items[item.name] = item
+
+    def __contains__(self, key):
+        return key in self.items
+
+    def __getitem__(self, key):
+        return self.items[key]
+
+    def getvalue(self, key, default=None):
+        item = self.items.get(key)
+        if item is None:
+            return default
+        if isinstance(item, list):
+            item = item[0]
+        return item.value
+
+
+def parse_header_value(header):
+    parts = [part.strip() for part in header.split(";") if part.strip()]
+    main = parts[0].lower() if parts else ""
+    params = {}
+    for part in parts[1:]:
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        params[key.strip().lower()] = value.strip().strip('"')
+    return main, params
+
+
+def parse_multipart_form(handler):
+    ctype, params = parse_header_value(handler.headers.get("Content-Type", ""))
+    if ctype != "multipart/form-data":
+        return None
+    boundary = params.get("boundary")
+    if not boundary:
+        return None
+    length = int(handler.headers.get("Content-Length", "0"))
+    body = handler.rfile.read(length)
+    boundary_bytes = b"--" + boundary.encode()
+    form = MultipartForm()
+
+    for part in body.split(boundary_bytes):
+        part = part.strip()
+        if not part or part == b"--":
+            continue
+        if part.endswith(b"--"):
+            part = part[:-2].strip()
+        if b"\r\n\r\n" in part:
+            raw_headers, value = part.split(b"\r\n\r\n", 1)
+        elif b"\n\n" in part:
+            raw_headers, value = part.split(b"\n\n", 1)
+        else:
+            continue
+        value = value.rstrip(b"\r\n")
+        headers = {}
+        for line in raw_headers.decode("utf-8", errors="ignore").splitlines():
+            if ":" in line:
+                key, val = line.split(":", 1)
+                headers[key.strip().lower()] = val.strip()
+        disposition, disp_params = parse_header_value(headers.get("content-disposition", ""))
+        if disposition != "form-data":
+            continue
+        name = disp_params.get("name")
+        if not name:
+            continue
+        form.add(MultipartItem(name=name, value=value, filename=disp_params.get("filename")))
+    return form
+
+
 class App(BaseHTTPRequestHandler):
     def log_message(self, *_):
         return
@@ -1289,12 +1377,10 @@ class App(BaseHTTPRequestHandler):
             self.log_request_row(status, start)
 
     def handle_upload(self):
-        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
-        if ctype != "multipart/form-data":
+        form = parse_multipart_form(self)
+        if form is None:
             self.send_json(400, {"error": "multipart/form-data required"})
             return
-        pdict["boundary"] = bytes(pdict["boundary"], "utf-8")
-        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
         candidate_id = form.getvalue("candidate_id")
         file_item = form["resume"] if "resume" in form else None
         if not candidate_id or file_item is None or not file_item.filename:
@@ -1332,12 +1418,11 @@ class App(BaseHTTPRequestHandler):
         self.send_json(202, {"message": "Resume uploaded and processed", "resume_id": resume_id, "status": status})
 
     def handle_screen_resume(self):
-        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
-        if ctype != "multipart/form-data":
+        form = parse_multipart_form(self)
+        if form is None:
             self.send_json(400, {"error": "multipart/form-data required"})
             return
 
-        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
         file_item = form["resume"] if "resume" in form else None
         if file_item is None or not file_item.filename:
             self.send_json(400, {"error": "Please upload a resume file"})
@@ -1376,12 +1461,11 @@ class App(BaseHTTPRequestHandler):
         })
 
     def handle_screen_batch(self):
-        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
-        if ctype != "multipart/form-data":
+        form = parse_multipart_form(self)
+        if form is None:
             self.send_json(400, {"error": "multipart/form-data required"})
             return
 
-        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
         files = form["resumes"] if "resumes" in form else []
         if not isinstance(files, list):
             files = [files]
@@ -1464,12 +1548,11 @@ class App(BaseHTTPRequestHandler):
         xlsx_response(self, "resume_screening_results.xlsx", create_xlsx(headers, rows, widths))
 
     def handle_pdf_to_csv(self):
-        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
-        if ctype != "multipart/form-data":
+        form = parse_multipart_form(self)
+        if form is None:
             self.send_json(400, {"error": "multipart/form-data required"})
             return
 
-        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
         files = form["pdf_files"] if "pdf_files" in form else []
         if not isinstance(files, list):
             files = [files]
@@ -1507,12 +1590,11 @@ class App(BaseHTTPRequestHandler):
         csv_response(self, "pdf_data_output.csv", rows_to_csv(headers, normalized))
 
     def handle_screen_csv(self):
-        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
-        if ctype != "multipart/form-data":
+        form = parse_multipart_form(self)
+        if form is None:
             self.send_json(400, {"error": "multipart/form-data required"})
             return
 
-        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST"})
         file_item = form["csv_file"] if "csv_file" in form else None
         if file_item is None or not file_item.filename:
             self.send_json(400, {"error": "Please upload a CSV file"})
