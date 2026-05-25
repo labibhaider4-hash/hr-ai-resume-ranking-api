@@ -10,6 +10,7 @@ import sqlite3
 import time
 import uuid
 import zipfile
+import zlib
 import xml.etree.ElementTree as ET
 from io import BytesIO, StringIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,6 +27,7 @@ PORT = int(os.environ.get("PORT", "5000"))
 
 DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR.mkdir(exist_ok=True)
+MAX_CSV_SCREENING_ROWS = 1_000_000
 
 
 HOME_PAGE = r"""<!doctype html>
@@ -772,16 +774,123 @@ def extract_text_from_docx(data):
     return " ".join(text_parts)
 
 
+def decode_pdf_literal_string(value):
+    out = bytearray()
+    i = 0
+    while i < len(value):
+        byte = value[i]
+        if byte == 92 and i + 1 < len(value):
+            i += 1
+            escaped = value[i]
+            mapping = {110: 10, 114: 13, 116: 9, 98: 8, 102: 12, 40: 40, 41: 41, 92: 92}
+            if escaped in mapping:
+                out.append(mapping[escaped])
+            elif 48 <= escaped <= 55:
+                octal = bytes([escaped])
+                for _ in range(2):
+                    if i + 1 < len(value) and 48 <= value[i + 1] <= 55:
+                        i += 1
+                        octal += bytes([value[i]])
+                    else:
+                        break
+                out.append(int(octal, 8))
+            else:
+                out.append(escaped)
+        else:
+            out.append(byte)
+        i += 1
+    return decode_pdf_bytes(bytes(out))
+
+
+def decode_pdf_bytes(value):
+    if not value:
+        return ""
+    if value.startswith(b"\xfe\xff"):
+        return value[2:].decode("utf-16-be", errors="ignore")
+    if value.startswith(b"\xff\xfe"):
+        return value[2:].decode("utf-16-le", errors="ignore")
+    if len(value) > 2 and value[0] == 0 and value[2::2]:
+        decoded = value.decode("utf-16-be", errors="ignore")
+        if len(re.findall(r"[A-Za-z0-9]", decoded)) >= 2:
+            return decoded
+    return value.decode("latin-1", errors="ignore")
+
+
+def extract_pdf_text_from_stream(stream):
+    text_parts = []
+    content = stream.replace(b"\\\r\n", b"").replace(b"\\\n", b"")
+    blocks = re.findall(rb"BT(.*?)ET", content, flags=re.S) or [content]
+    for block in blocks:
+        block = re.sub(rb"\bT\*|\bTd\b|\bTD\b", b"\n", block)
+        for literal in re.findall(rb"\((?:\\.|[^\\)])*\)", block, flags=re.S):
+            text = decode_pdf_literal_string(literal[1:-1]).strip()
+            if text:
+                text_parts.append(text)
+        for hex_value in re.findall(rb"<([0-9A-Fa-f\s]+)>", block):
+            compact = re.sub(rb"\s+", b"", hex_value)
+            if len(compact) < 4 or len(compact) % 2:
+                continue
+            try:
+                text = decode_pdf_bytes(bytes.fromhex(compact.decode())).strip()
+            except ValueError:
+                continue
+            if text and len(re.findall(r"[A-Za-z0-9]", text)) >= 2:
+                text_parts.append(text)
+    return "\n".join(text_parts)
+
+
+def extract_text_from_pdf_streams(data):
+    text_parts = []
+    pattern = re.compile(rb"<<(?P<dict>.*?)>>\s*stream\r?\n(?P<body>.*?)\r?\nendstream", re.S)
+    for match in pattern.finditer(data):
+        stream_dict = match.group("dict")
+        body = match.group("body").strip(b"\r\n")
+        stream_data = body
+        if b"FlateDecode" in stream_dict:
+            try:
+                stream_data = zlib.decompress(body)
+            except zlib.error:
+                continue
+        extracted = extract_pdf_text_from_stream(stream_data)
+        if extracted:
+            text_parts.append(extracted)
+    return "\n".join(text_parts)
+
+
+def looks_like_pdf_internal_line(line):
+    stripped = line.strip()
+    if not stripped:
+        return True
+    internal_patterns = [
+        r"^%?PDF-\d", r"^\d+\s+\d+\s+obj$", r"^endobj$", r"^stream$", r"^endstream$",
+        r"^xref$", r"^trailer$", r"^startxref$", r"^/[^ ]+", r"^<<", r"^>>$",
+        r"^\[?\d+\s+\d+\s+R\]?$", r"^[A-Za-z0-9+/]{20,}={0,2}$",
+    ]
+    return any(re.search(pattern, stripped) for pattern in internal_patterns)
+
+
 def extract_text_from_pdf(data):
     try:
         from pypdf import PdfReader
         reader = PdfReader(BytesIO(data))
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        if text.strip():
+            return text
     except Exception:
-        # Fallback for demo: extract readable text-like fragments from simple PDFs.
-        raw = data.decode("latin-1", errors="ignore")
-        chunks = re.findall(r"[A-Za-z0-9@.+#,/()\- ]{4,}", raw)
-        return "\n".join(chunks)
+        pass
+
+    stream_text = extract_text_from_pdf_streams(data)
+    if stream_text.strip():
+        return stream_text
+
+    raw = data.decode("latin-1", errors="ignore")
+    chunks = re.findall(r"[A-Za-z0-9@.+#,/()\- ]{4,}", raw)
+    readable = [chunk.strip() for chunk in chunks if not looks_like_pdf_internal_line(chunk)]
+    readable_text = "\n".join(readable)
+    letters = len(re.findall(r"[A-Za-z]", readable_text))
+    if letters < 20:
+        return ""
+    return readable_text
 
 
 def extract_text_from_file_bytes(filename, data):
@@ -799,7 +908,7 @@ def pdf_text_to_rows(filename, text):
     rows = []
     for line_number, line in enumerate(clean_text(text).splitlines(), start=1):
         line = line.strip()
-        if not line:
+        if not line or looks_like_pdf_internal_line(line):
             continue
         parts = re.split(r"\s{2,}|\t+|[,|;]+", line)
         parts = [part.strip() for part in parts if part.strip()]
@@ -1627,8 +1736,8 @@ class App(BaseHTTPRequestHandler):
         if not csv_rows:
             self.send_json(400, {"error": "CSV file has no data rows"})
             return
-        if len(csv_rows) > 200:
-            self.send_json(400, {"error": "Maximum 200 CSV rows are allowed in one screening batch"})
+        if len(csv_rows) > MAX_CSV_SCREENING_ROWS:
+            self.send_json(400, {"error": f"Maximum {MAX_CSV_SCREENING_ROWS} CSV rows are allowed in one screening batch"})
             return
 
         headers = [

@@ -30,7 +30,7 @@ The homepage now shows the simple screening system:
 - Screen up to 200 resumes in one batch
 - Download the results as an Excel `.xlsx` file
 - Convert PDF data files into CSV
-- Upload CSV candidate/resume data directly and screen each row
+- Upload CSV candidate/resume data directly and screen up to 1,000,000 rows
 
 ## Test Health
 
